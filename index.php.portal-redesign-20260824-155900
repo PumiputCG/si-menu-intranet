@@ -1,0 +1,3394 @@
+<?php
+/* ══════════════════════════════════════════════════════════════
+   index.php — SI MENU · Intranet Portal (SUPAVUT GROUP)
+   โครงหน้าเดียวไล่ลงเป็นส่วน ๆ แบบเว็บองค์กร: ประกาศ · ระบบงาน ·
+   ปฏิทิน · เอกสารองค์กร · ติดต่อ  —  เขียนแบบ PHP 5.2-safe
+   ══════════════════════════════════════════════════════════════ */
+
+require_once dirname(__FILE__) . '/announcement_helpers.php';
+
+$announcements = announcement_read_all();
+$newsCategories = announcement_category_read_all();
+$categoryCounts = announcement_category_counts($announcements);
+
+/* ── ภาพสไลด์หัวหน้า — แอดมินจัดการผ่าน announcements_admin.php ── */
+$galleryImages = array();
+foreach (hero_read_all() as $heroSlide) {
+  $heroSlideUrl = hero_url($heroSlide);
+  if ($heroSlideUrl !== '') {
+    $galleryImages[] = $heroSlideUrl;
+  }
+}
+if (count($galleryImages) === 0) {
+  $galleryImages[] = 'img/gallery/1.jpg';
+}
+$heroImage = $galleryImages[0];
+
+/* ── ระบบงาน — หมวด "ทั้งหมด" นำหน้าเสมอ ── */
+$appCatRows = array(array('key' => '', 'th' => 'ทั้งหมด', 'en' => 'All', 'my' => 'အားလုံး'));
+foreach (app_category_list() as $appCatItem) {
+  $appCatRows[] = array(
+    'key' => $appCatItem['id'],
+    'th' => $appCatItem['th'],
+    'en' => $appCatItem['en'],
+    'my' => $appCatItem['my']
+  );
+}
+
+$appRows = array();
+$appTextRows = array();
+foreach (app_read_all() as $appItem) {
+  $appRows[] = array(
+    'id' => $appItem['id'],
+    'cat' => isset($appItem['cat']) ? $appItem['cat'] : '',
+    'img' => app_icon_url($appItem),
+    'url' => isset($appItem['url']) ? $appItem['url'] : ''
+  );
+  $appTextRows[$appItem['id']] = array(
+    'th' => array(app_name($appItem, 'th'), app_desc($appItem, 'th')),
+    'en' => array(app_name($appItem, 'en'), app_desc($appItem, 'en')),
+    'my' => array(app_name($appItem, 'my'), app_desc($appItem, 'my'))
+  );
+}
+
+/* ── ประกาศเด่น = รายการแรก (ปักหมุดมาก่อนแล้วจากตัวเรียง) ── */
+$featured = count($announcements) > 0 ? $announcements[0] : null;
+
+$companyMapQuery = 'Supavut Industry Co., Ltd.';
+$companyMapEmbedUrl = 'https://www.google.com/maps?q=' . rawurlencode($companyMapQuery) . '&output=embed';
+$companyMapOpenUrl = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($companyMapQuery);
+
+$mailHr = 'hr.manager@supavut.com';
+$mailIt = 'Pumiput.it@supavut.com';
+?>
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SUPAVUT GROUP — Intranet Portal</title>
+  <meta name="description" content="ศูนย์รวมระบบงานภายใน ประกาศ ปฏิทินบริษัท และข้อมูลองค์กรของ SUPAVUT GROUP">
+  <link rel="icon" type="image/png" href="./img/3si.png">
+  <link rel="apple-touch-icon" href="./img/pwa/icon-192.png">
+  <link rel="manifest" href="./site.webmanifest">
+  <meta name="theme-color" content="#064ba6">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ══════════════════════════════════════════════════════════
+       1. DESIGN TOKENS — ขอบคมแบบเว็บองค์กร (radius 0–3px)
+       ══════════════════════════════════════════════════════════ */
+    :root {
+      /* แบรนด์ */
+      --navy: #064ba6;
+      --navy-deep: #052a57;
+      --navy-mid: #073a75;
+      --navy-soft: #eaf1fb;
+      --navy-line: #c9dcf3;
+      --green: #168642;
+      --green-soft: #e6f4ec;
+
+      /* พื้นผิว */
+      --bg: #f1f4f8;
+      --surface: #ffffff;
+      --surface-2: #f7f9fc;
+      --surface-3: #eaeff5;
+      --ink: #0f1a2b;
+      --ink-2: #33415c;
+      --muted: #5b6778;
+      --faint: #8b95a5;
+      --on-dark: #ffffff;
+
+      --line: #dde4ed;
+      --line-2: #c6cfdb;
+
+      --amber: #b45309;
+      --amber-soft: #fef3e2;
+      --gold: #c9a227;
+      --red: #b91c1c;
+      --red-soft: #fdeaea;
+
+      /* ขอบมนน้อย */
+      --r-xs: 0px;
+      --r-sm: 2px;
+      --r-md: 3px;
+      --r-lg: 3px;
+
+      --sh-1: 0 1px 2px rgba(15, 26, 43, 0.06);
+      --sh-2: 0 2px 10px rgba(15, 26, 43, 0.07), 0 1px 2px rgba(15, 26, 43, 0.05);
+      --sh-3: 0 14px 38px rgba(15, 26, 43, 0.16), 0 3px 8px rgba(15, 26, 43, 0.07);
+
+      --shell: 1320px;
+      --gut: clamp(16px, 3vw, 34px);
+      --util-h: 32px;
+      --head-h: 62px;
+
+      --z-sticky: 100;
+      --z-dropdown: 200;
+      --z-modal: 400;
+      --z-toast: 500;
+
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --fast: 140ms;
+      --base: 220ms;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       2. RESET / BASE
+       ══════════════════════════════════════════════════════════ */
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: calc(var(--util-h) + var(--head-h) + 10px);
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Inter", "Noto Sans Thai", "Noto Sans Myanmar", system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3, h4, p, figure { margin: 0; }
+    img { max-width: 100%; display: block; }
+    a { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+    ul { margin: 0; padding: 0; list-style: none; }
+
+    button, input, select, textarea { font: inherit; color: inherit; }
+
+    button {
+      border: 0;
+      background: none;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--navy);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: var(--shell);
+      margin-inline: auto;
+      padding-inline: var(--gut);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       3. แถบบนสุด (Utility bar)
+       ══════════════════════════════════════════════════════════ */
+    .util-bar {
+      background: var(--navy-deep);
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.75rem;
+    }
+
+    .util-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-height: var(--util-h);
+    }
+
+    .util-clock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .util-clock svg { width: 13px; height: 13px; opacity: 0.7; flex: 0 0 auto; }
+    .util-clock b { font-weight: 600; font-variant-numeric: tabular-nums; color: #ffffff; }
+    .util-sep { color: rgba(255, 255, 255, 0.28); }
+
+    .util-links {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-left: auto;
+    }
+
+    .util-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: color var(--fast) var(--ease);
+    }
+
+    .util-links a:hover { color: #ffffff; }
+    .util-links svg { width: 13px; height: 13px; opacity: 0.75; }
+
+    /* ══════════════════════════════════════════════════════════
+       4. แถบเมนูหลัก (Header)
+       ══════════════════════════════════════════════════════════ */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: var(--z-sticky);
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 1px 0 rgba(15, 26, 43, 0.02);
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: clamp(14px, 2vw, 28px);
+      min-height: var(--head-h);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 0 0 auto;
+      padding-right: clamp(14px, 2vw, 26px);
+      border-right: 1px solid var(--line);
+    }
+
+    .brand-mark { width: 34px; height: 34px; object-fit: contain; }
+    .brand-name { display: grid; line-height: 1; }
+
+    .brand-name b {
+      color: var(--navy);
+      font-size: 1.0625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+
+    .brand-name span {
+      color: var(--green);
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.36em;
+      margin-top: 3px;
+    }
+
+    /* ── เมนูหลัก ── */
+    .main-nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .main-nav::-webkit-scrollbar { display: none; }
+
+    .nav-link {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      height: var(--head-h);
+      padding-inline: clamp(9px, 1.1vw, 15px);
+      color: var(--ink-2);
+      font-size: 0.875rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: color var(--fast) var(--ease);
+    }
+
+    .nav-link::after {
+      content: "";
+      position: absolute;
+      left: clamp(9px, 1.1vw, 15px);
+      right: clamp(9px, 1.1vw, 15px);
+      bottom: 0;
+      height: 3px;
+      background: var(--navy);
+      transform: scaleX(0);
+      transition: transform var(--base) var(--ease);
+    }
+
+    .nav-link:hover { color: var(--navy); }
+    .nav-link.is-active { color: var(--navy); }
+    .nav-link.is-active::after { transform: scaleX(1); }
+
+    /* ── เครื่องมือฝั่งขวา ── */
+    .header-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .search-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: clamp(170px, 17vw, 250px);
+    }
+
+    .search-box svg {
+      position: absolute;
+      left: 9px;
+      width: 15px;
+      height: 15px;
+      color: var(--faint);
+      pointer-events: none;
+    }
+
+    .search-box input {
+      width: 100%;
+      height: 34px;
+      padding: 0 30px 0 30px;
+      border: 1px solid var(--line-2);
+      border-radius: var(--r-sm);
+      background: var(--surface-2);
+      font-size: 0.8125rem;
+      transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease);
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--navy);
+      background: var(--surface);
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 6px;
+      width: 20px;
+      height: 20px;
+      display: none;
+      place-items: center;
+      border-radius: var(--r-sm);
+      color: var(--faint);
+    }
+
+    .search-clear svg { position: static; width: 12px; height: 12px; color: inherit; }
+    .search-clear:hover { background: var(--surface-3); color: var(--ink); }
+    .search-box.has-text .search-clear { display: grid; }
+
+    .pop { position: relative; flex: 0 0 auto; }
+
+    .pop-panel {
+      position: absolute;
+      top: calc(100% + 9px);
+      right: 0;
+      z-index: var(--z-dropdown);
+      min-width: 214px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      box-shadow: var(--sh-3);
+      display: none;
+    }
+
+    .pop-panel.on { display: grid; gap: 2px; }
+
+    .pop-label {
+      padding: 7px 10px 5px;
+      color: var(--faint);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .pop-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: var(--r-sm);
+      color: var(--ink);
+      font-size: 0.875rem;
+      text-align: left;
+      transition: background var(--fast) var(--ease);
+    }
+
+    .pop-item:hover { background: var(--surface-3); }
+    .pop-item img { width: 19px; height: 14px; object-fit: cover; border-radius: 2px; flex: 0 0 auto; }
+    .pop-item svg { width: 17px; height: 17px; flex: 0 0 auto; color: var(--muted); }
+    .pop-item span { flex: 1 1 auto; }
+
+    .pop-item[aria-current="true"] {
+      background: var(--navy-soft);
+      color: var(--navy);
+      font-weight: 600;
+    }
+
+    .pop-divider { height: 1px; margin: 5px 6px; background: var(--line); }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: var(--r-sm);
+      color: var(--muted);
+      transition: background var(--fast) var(--ease), color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+    }
+
+    .icon-btn:hover, .icon-btn[aria-expanded="true"] {
+      border-color: var(--line-2);
+      background: var(--surface-2);
+      color: var(--navy);
+    }
+
+    .icon-btn svg { width: 17px; height: 17px; }
+
+    .lang-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 9px;
+      border: 1px solid transparent;
+      border-radius: var(--r-sm);
+      transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease);
+    }
+
+    .lang-btn:hover, .lang-btn[aria-expanded="true"] {
+      border-color: var(--line-2);
+      background: var(--surface-2);
+    }
+
+    .lang-btn img { width: 21px; height: 15px; object-fit: cover; border-radius: 2px; }
+    .lang-btn svg { width: 12px; height: 12px; color: var(--muted); }
+
+    /* ══════════════════════════════════════════════════════════
+       5. HERO — สไลด์ภาพเต็มความกว้าง
+       ══════════════════════════════════════════════════════════ */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background: var(--navy-deep);
+    }
+
+    .hero-stage {
+      position: relative;
+      height: clamp(340px, 46vw, 500px);
+    }
+
+    .hero-slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 700ms var(--ease);
+    }
+
+    .hero-slide.is-on { opacity: 1; }
+
+    .hero-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .hero-veil {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(100deg, rgba(5, 24, 48, 0.90) 0%, rgba(5, 24, 48, 0.68) 42%, rgba(5, 24, 48, 0.22) 74%, rgba(5, 24, 48, 0.30) 100%);
+    }
+
+    .hero-inner {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+    }
+
+    .hero-copy {
+      max-width: 680px;
+      color: var(--on-dark);
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 16px;
+      padding: 5px 11px;
+      border-left: 3px solid var(--gold);
+      background: rgba(255, 255, 255, 0.09);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .hero-copy h1 {
+      font-size: clamp(1.75rem, 3.6vw, 2.875rem);
+      font-weight: 700;
+      line-height: 1.22;
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+    }
+
+    .hero-copy p {
+      max-width: 56ch;
+      margin-top: 14px;
+      color: rgba(255, 255, 255, 0.85);
+      font-size: clamp(0.875rem, 1.1vw, 1rem);
+      line-height: 1.8;
+      text-wrap: pretty;
+    }
+
+    .hero-cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 26px;
+    }
+
+    /* ── ปุ่มมาตรฐาน ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 42px;
+      padding: 0 20px;
+      border: 1px solid transparent;
+      border-radius: var(--r-sm);
+      font-size: 0.875rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease), color var(--fast) var(--ease), transform var(--fast) var(--ease);
+    }
+
+    .btn svg { width: 16px; height: 16px; flex: 0 0 auto; }
+    .btn:active { transform: translateY(1px); }
+
+    .btn-primary { background: var(--navy); color: #ffffff; }
+    .btn-primary:hover { background: var(--navy-mid); }
+
+    .btn-outline {
+      border-color: rgba(255, 255, 255, 0.55);
+      color: #ffffff;
+    }
+
+    .btn-outline:hover { background: rgba(255, 255, 255, 0.12); border-color: #ffffff; }
+
+    .btn-ghost {
+      border-color: var(--line-2);
+      background: var(--surface);
+      color: var(--ink-2);
+    }
+
+    .btn-ghost:hover { border-color: var(--navy); background: var(--navy-soft); color: var(--navy); }
+
+    .btn-sm { height: 34px; padding: 0 14px; font-size: 0.8125rem; }
+
+    /* ── ปุ่มเลื่อนสไลด์ + จุด ── */
+    .hero-nav {
+      position: absolute;
+      right: var(--gut);
+      bottom: 22px;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hero-arrow {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      border-radius: var(--r-sm);
+      color: #ffffff;
+      transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease);
+    }
+
+    .hero-arrow:hover { background: rgba(255, 255, 255, 0.16); border-color: #ffffff; }
+    .hero-arrow svg { width: 17px; height: 17px; }
+
+    .hero-dots {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-right: 6px;
+    }
+
+    .hero-dots button {
+      width: 22px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.38);
+      transition: background var(--fast) var(--ease), width var(--base) var(--ease);
+    }
+
+    .hero-dots button[aria-current="true"] { width: 34px; background: var(--gold); }
+
+    /* ══════════════════════════════════════════════════════════
+       6. แถบตัวเลขสรุป (KPI strip)
+       ══════════════════════════════════════════════════════════ */
+    .kpi-strip { background: var(--surface); border-bottom: 1px solid var(--line); }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .kpi {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 20px clamp(12px, 1.6vw, 24px);
+      border-left: 1px solid var(--line);
+    }
+
+    .kpi:first-child { border-left: 0; padding-left: 0; }
+
+    .kpi-ico {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: var(--r-sm);
+      background: var(--navy-soft);
+      color: var(--navy);
+    }
+
+    .kpi-ico.green { background: var(--green-soft); color: var(--green); }
+    .kpi-ico.gold { background: #fbf5e3; color: #a9861f; }
+    .kpi-ico svg { width: 21px; height: 21px; }
+
+    .kpi-text { min-width: 0; }
+
+    .kpi-text b {
+      display: block;
+      font-size: 1.125rem;
+      font-weight: 700;
+      line-height: 1.25;
+      font-variant-numeric: tabular-nums;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .kpi-text span {
+      display: block;
+      color: var(--faint);
+      font-size: 0.75rem;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       7. โครงส่วนเนื้อหา (Section)
+       ══════════════════════════════════════════════════════════ */
+    .section { padding-block: clamp(38px, 4.6vw, 68px); }
+    .section.alt { background: var(--surface); border-block: 1px solid var(--line); }
+
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--navy);
+    }
+
+    .section-head .eyebrow {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--green);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .section-head h2 {
+      font-size: clamp(1.25rem, 2vw, 1.625rem);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      line-height: 1.3;
+    }
+
+    .section-head p {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .head-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--navy);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: gap var(--fast) var(--ease);
+    }
+
+    .head-link:hover { gap: 11px; }
+    .head-link svg { width: 15px; height: 15px; }
+
+    /* ── แถบชิป (แท็บหมวด) ── */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 34px;
+      padding: 0 13px;
+      border: 1px solid var(--line-2);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      color: var(--ink-2);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease), color var(--fast) var(--ease);
+    }
+
+    .chip small {
+      min-width: 20px;
+      padding: 1px 5px;
+      border-radius: var(--r-sm);
+      background: var(--surface-3);
+      color: var(--muted);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .chip:hover { border-color: var(--navy); color: var(--navy); }
+
+    .chip[aria-selected="true"] {
+      border-color: var(--navy);
+      background: var(--navy);
+      color: #ffffff;
+    }
+
+    .chip[aria-selected="true"] small { background: rgba(255, 255, 255, 0.2); color: #ffffff; }
+
+    /* ══════════════════════════════════════════════════════════
+       8. ประกาศ
+       ══════════════════════════════════════════════════════════ */
+    .news-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: clamp(18px, 2.2vw, 30px);
+      align-items: start;
+    }
+
+    /* ── ประกาศเด่น ── */
+    .news-feature {
+      display: grid;
+      grid-template-columns: minmax(0, 46%) minmax(0, 1fr);
+      overflow: hidden;
+      margin-bottom: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      box-shadow: var(--sh-1);
+      transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+    }
+
+    .news-feature:hover { border-color: var(--navy-line); box-shadow: var(--sh-2); }
+
+    .feature-media {
+      position: relative;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      background: var(--surface-3);
+    }
+
+    .feature-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 600ms var(--ease);
+    }
+
+    .news-feature:hover .feature-media img { transform: scale(1.04); }
+
+    .media-blank {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+      color: var(--line-2);
+      font-size: 0.875rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+    }
+
+    .date-tag {
+      position: absolute;
+      left: 0;
+      top: 0;
+      display: grid;
+      place-items: center;
+      min-width: 56px;
+      padding: 8px 6px;
+      background: var(--navy);
+      color: #ffffff;
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .date-tag strong { font-size: 1.25rem; font-weight: 700; }
+    .date-tag span { font-size: 0.6875rem; opacity: 0.85; }
+
+    .feature-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(18px, 2vw, 28px);
+    }
+
+    .news-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      height: 21px;
+      padding: 0 8px;
+      border-radius: var(--r-sm);
+      font-size: 0.6875rem;
+      font-weight: 700;
+    }
+
+    .tag-cat { background: var(--navy-soft); color: var(--navy); }
+    .tag-new { background: var(--red-soft); color: var(--red); }
+    .tag-pin { background: var(--amber-soft); color: var(--amber); }
+    .news-when { color: var(--faint); font-size: 0.75rem; }
+
+    .feature-body h3 {
+      font-size: clamp(1rem, 1.5vw, 1.25rem);
+      font-weight: 700;
+      line-height: 1.45;
+      text-wrap: pretty;
+    }
+
+    .feature-body p {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.875rem;
+      line-height: 1.8;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .feature-more {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 16px;
+      color: var(--navy);
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+
+    .feature-more svg { width: 15px; height: 15px; }
+
+    /* ── รายการประกาศ ── */
+    .news-list { display: grid; gap: 8px; }
+
+    .news-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 14px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease);
+    }
+
+    .news-row:hover { border-color: var(--navy-line); background: var(--surface-2); }
+    .news-row.is-pinned { border-left: 3px solid var(--amber); }
+
+    .row-thumb {
+      position: relative;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      background: var(--surface-3);
+    }
+
+    .row-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .row-thumb .media-blank { font-size: 0.625rem; }
+
+    .row-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      padding-right: 8px;
+    }
+
+    .row-body h4 {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .row-body p {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 0.8125rem;
+      line-height: 1.65;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ── แถบข้างประกาศ ── */
+    .side-card {
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      box-shadow: var(--sh-1);
+    }
+
+    .side-card + .side-card { margin-top: 14px; }
+
+    .side-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 15px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    .side-head h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .side-head svg { width: 15px; height: 15px; color: var(--navy); }
+    .side-body { padding: 6px 15px 14px; }
+
+    .pin-item {
+      display: block;
+      padding: 11px 0;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    .pin-item:last-child { border-bottom: 0; }
+
+    .pin-item span {
+      display: block;
+      color: var(--faint);
+      font-size: 0.6875rem;
+      margin-bottom: 3px;
+    }
+
+    .pin-item b {
+      display: -webkit-box;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      line-height: 1.55;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      transition: color var(--fast) var(--ease);
+    }
+
+    .pin-item:hover b { color: var(--navy); }
+
+    /* ── ทางลัดในแถบข้าง ── */
+    .quick-link {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 0;
+      border-bottom: 1px dashed var(--line);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      transition: color var(--fast) var(--ease);
+    }
+
+    .quick-link:last-child { border-bottom: 0; }
+    .quick-link:hover { color: var(--navy); }
+
+    .quick-link .ql-ico {
+      width: 30px;
+      height: 30px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: var(--r-sm);
+      background: var(--surface-3);
+      color: var(--navy);
+    }
+
+    .quick-link:hover .ql-ico { background: var(--navy-soft); }
+    .quick-link .ql-ico svg { width: 16px; height: 16px; }
+    .quick-link .ql-go { margin-left: auto; color: var(--faint); }
+    .quick-link .ql-go svg { width: 14px; height: 14px; }
+
+    /* ══════════════════════════════════════════════════════════
+       9. ระบบงาน
+       ══════════════════════════════════════════════════════════ */
+    .apps-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .apps-bar .chips { margin-bottom: 0; }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+      gap: 10px;
+    }
+
+    .app {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      text-align: left;
+      transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease), transform var(--fast) var(--ease);
+    }
+
+    .app::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--navy);
+      transform: scaleY(0);
+      transform-origin: top;
+      transition: transform var(--base) var(--ease);
+    }
+
+    .app:hover {
+      border-color: var(--navy-line);
+      box-shadow: var(--sh-2);
+      transform: translateY(-2px);
+    }
+
+    .app:hover::before { transform: scaleY(1); }
+
+    .app-icon {
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface-2);
+    }
+
+    .app-icon img { width: 100%; height: 100%; object-fit: contain; }
+
+    .app-text { flex: 1 1 auto; min-width: 0; }
+
+    .app-text b {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      line-height: 1.4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .app-text span {
+      display: -webkit-box;
+      margin-top: 4px;
+      color: var(--faint);
+      font-size: 0.75rem;
+      line-height: 1.6;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .app-out {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      color: var(--line-2);
+      opacity: 0;
+      transition: opacity var(--fast) var(--ease), color var(--fast) var(--ease);
+    }
+
+    .app-out svg { width: 14px; height: 14px; }
+    .app:hover .app-out { opacity: 1; color: var(--navy); }
+
+    .app.off { cursor: not-allowed; opacity: 0.62; }
+    .app.off:hover { transform: none; box-shadow: none; border-color: var(--line); }
+    .app.off:hover::before { transform: scaleY(0); }
+
+    /* ══════════════════════════════════════════════════════════
+       10. ปฏิทิน
+       ══════════════════════════════════════════════════════════ */
+    .cal-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: clamp(18px, 2.2vw, 30px);
+      align-items: start;
+    }
+
+    .cal-card, .holiday-card {
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      box-shadow: var(--sh-1);
+    }
+
+    .cal-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    .seg {
+      display: inline-flex;
+      padding: 2px;
+      border: 1px solid var(--line-2);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+    }
+
+    .seg button {
+      height: 28px;
+      padding: 0 14px;
+      border-radius: var(--r-sm);
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+    }
+
+    .seg button[aria-selected="true"] { background: var(--navy); color: #ffffff; }
+
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .month-nav b {
+      min-width: 132px;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .month-nav button {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line-2);
+      border-radius: var(--r-sm);
+      color: var(--muted);
+      transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+    }
+
+    .month-nav button:hover { background: var(--navy-soft); color: var(--navy); }
+    .month-nav svg { width: 14px; height: 14px; }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      padding: 14px 16px 16px;
+    }
+
+    .cal-dow {
+      display: grid;
+      place-items: center;
+      height: 26px;
+      color: var(--faint);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .cal-day {
+      position: relative;
+      display: grid;
+      place-items: center;
+      aspect-ratio: 1 / 1;
+      border-radius: var(--r-sm);
+      font-size: 0.8125rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cal-day.out { color: var(--line-2); }
+    .cal-day.today { outline: 2px solid var(--navy); outline-offset: -2px; font-weight: 700; }
+
+    .cal-day .mk {
+      position: absolute;
+      inset: 12%;
+      width: 76%;
+      height: 76%;
+      opacity: 0.9;
+    }
+
+    .cal-day .mk + * { position: relative; }
+    .cal-day.is-sunday, .cal-day.is-public, .cal-day.is-substitution,
+    .cal-day.is-compensate, .cal-day.is-vacation, .cal-day.is-special { color: var(--ink); font-weight: 700; z-index: 0; }
+
+    /* สีสัญลักษณ์ตามไฟล์ Excel ต้นฉบับ */
+    .mk { fill: none; stroke-width: 1.6; }
+    .m-sunday { stroke: #cbd5e1; fill: #f1f5f9; }
+    .m-public { stroke: #dc2626; fill: #fee2e2; }
+    .m-substitution { stroke: #ea580c; fill: #ffedd5; }
+    .m-compensate { stroke: #0284c7; fill: #e0f2fe; }
+    .m-vacation { stroke: #16a34a; fill: #dcfce7; }
+    .m-special { stroke: #9333ea; fill: #f3e8ff; }
+
+    .holiday-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    .holiday-head h3 { font-size: 0.875rem; font-weight: 700; }
+    .holiday-head span { color: var(--faint); font-size: 0.75rem; }
+
+    .holiday-list { padding: 4px 16px 14px; max-height: 296px; overflow-y: auto; }
+
+    .holiday {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    .holiday:last-child { border-bottom: 0; }
+
+    .holiday-date {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface-2);
+      line-height: 1.05;
+      text-align: center;
+    }
+
+    .holiday-date strong { font-size: 0.9375rem; font-weight: 700; }
+    .holiday-date em { font-style: normal; color: var(--faint); font-size: 0.625rem; }
+
+    .holiday-name { flex: 1 1 auto; min-width: 0; }
+    .holiday-name b { display: block; font-size: 0.8125rem; font-weight: 600; line-height: 1.5; }
+    .holiday-name span { color: var(--faint); font-size: 0.6875rem; }
+    .holiday .mk { width: 17px; height: 17px; flex: 0 0 auto; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      padding: 13px 16px;
+      border-top: 1px solid var(--line);
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    .legend > span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend .mk { width: 15px; height: 15px; }
+
+    /* ══════════════════════════════════════════════════════════
+       11. เอกสารองค์กร
+       ══════════════════════════════════════════════════════════ */
+    .org-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .org-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-top: 3px solid var(--navy);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      box-shadow: var(--sh-1);
+      transition: box-shadow var(--fast) var(--ease), transform var(--fast) var(--ease);
+    }
+
+    .org-card:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+    .org-card.is-green { border-top-color: var(--green); }
+    .org-card.is-gold { border-top-color: var(--gold); }
+
+    .org-card.off { cursor: default; opacity: 0.72; }
+    .org-card.off:hover { transform: none; box-shadow: var(--sh-1); }
+
+    .org-ico {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--r-sm);
+      background: var(--navy-soft);
+      color: var(--navy);
+    }
+
+    .org-card.is-green .org-ico { background: var(--green-soft); color: var(--green); }
+    .org-card.is-gold .org-ico { background: #fbf5e3; color: #a9861f; }
+    .org-ico svg { width: 22px; height: 22px; }
+
+    .org-card h3 { font-size: 1rem; font-weight: 700; }
+
+    .org-card p {
+      flex: 1 1 auto;
+      color: var(--muted);
+      font-size: 0.8125rem;
+      line-height: 1.75;
+    }
+
+    .org-go {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--navy);
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+
+    .org-card.off .org-go { color: var(--faint); }
+    .org-go svg { width: 15px; height: 15px; }
+
+    /* ══════════════════════════════════════════════════════════
+       12. ติดต่อ + แผนที่
+       ══════════════════════════════════════════════════════════ */
+    .contact-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+      gap: clamp(18px, 2.2vw, 30px);
+      align-items: start;
+    }
+
+    .contact-stack { display: grid; gap: 12px; }
+
+    .contact {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      box-shadow: var(--sh-1);
+      transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+    }
+
+    .contact:hover { border-color: var(--navy-line); box-shadow: var(--sh-2); }
+
+    .contact-ico {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: var(--r-sm);
+      background: var(--navy-soft);
+      color: var(--navy);
+    }
+
+    .contact-ico.green { background: var(--green-soft); color: var(--green); }
+    .contact-ico svg { width: 21px; height: 21px; }
+
+    .contact-text { min-width: 0; }
+    .contact-text b { display: block; font-size: 0.9375rem; font-weight: 700; }
+    .contact-text > span { display: block; margin-top: 2px; color: var(--muted); font-size: 0.8125rem; }
+
+    .contact-mail {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 9px;
+      color: var(--navy);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .contact-mail svg { width: 14px; height: 14px; flex: 0 0 auto; }
+
+    .map-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      box-shadow: var(--sh-1);
+    }
+
+    .map-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    .map-head h3 { font-size: 0.875rem; font-weight: 700; }
+
+    .map-frame {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background: var(--surface-3);
+    }
+
+    .map-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+    .map-open {
+      position: absolute;
+      inset: 0;
+      background: transparent;
+    }
+
+    .map-chip {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      border-radius: var(--r-sm);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--sh-2);
+      color: var(--navy);
+      font-size: 0.75rem;
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    .map-chip svg { width: 14px; height: 14px; }
+
+    /* ══════════════════════════════════════════════════════════
+       13. สถานะว่าง
+       ══════════════════════════════════════════════════════════ */
+    .empty {
+      display: grid;
+      gap: 6px;
+      padding: 40px 20px;
+      border: 1px dashed var(--line-2);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      text-align: center;
+    }
+
+    .empty b { font-size: 0.9375rem; }
+    .empty span { color: var(--faint); font-size: 0.8125rem; }
+
+    /* ══════════════════════════════════════════════════════════
+       14. FOOTER
+       ══════════════════════════════════════════════════════════ */
+    .site-footer {
+      background: var(--navy-deep);
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 0.8125rem;
+    }
+
+    .footer-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
+      gap: clamp(22px, 3vw, 50px);
+      padding-block: clamp(32px, 3.6vw, 52px);
+    }
+
+    .footer-brand { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+    .footer-brand img { width: 36px; height: 36px; object-fit: contain; }
+    .footer-brand .brand-name b { color: #ffffff; font-size: 1.0625rem; }
+    .footer-brand .brand-name span { color: #6fd39b; }
+
+    .footer-main p { max-width: 44ch; line-height: 1.85; }
+
+    .footer-col h4 {
+      margin-bottom: 13px;
+      color: #ffffff;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .footer-col li + li { margin-top: 9px; }
+
+    .footer-col a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: color var(--fast) var(--ease);
+    }
+
+    .footer-col a:hover { color: #ffffff; }
+    .footer-col svg { width: 14px; height: 14px; opacity: 0.6; flex: 0 0 auto; }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .footer-bottom-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding-block: 15px;
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    .to-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: color var(--fast) var(--ease);
+    }
+
+    .to-top:hover { color: #ffffff; }
+    .to-top svg { width: 14px; height: 14px; }
+
+    /* ══════════════════════════════════════════════════════════
+       15. MODAL + TOAST
+       ══════════════════════════════════════════════════════════ */
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: var(--z-modal);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(10px, 2vw, 26px);
+    }
+
+    .modal.on { display: flex; }
+
+    .modal-bg {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 16, 30, 0.62);
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-card {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      width: min(100%, 1080px);
+      max-height: min(100vh - 40px, 880px);
+      overflow: hidden;
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      box-shadow: var(--sh-3);
+      animation: pop 240ms var(--ease);
+    }
+
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(10px) scale(0.99); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      flex: 0 0 auto;
+    }
+
+    .modal-head h2 { font-size: 1rem; font-weight: 700; }
+    .modal-body { flex: 1 1 auto; overflow-y: auto; padding: 18px 20px; }
+
+    .year-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+      gap: 12px;
+    }
+
+    .month-card {
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .month-card > b {
+      display: block;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+      font-size: 0.8125rem;
+      font-weight: 700;
+    }
+
+    .month-card .cal-grid { padding: 8px; gap: 1px; }
+    .month-card .cal-day { font-size: 0.6875rem; }
+    .month-card .cal-dow { height: 20px; font-size: 0.5625rem; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 26px;
+      z-index: var(--z-toast);
+      max-width: min(92vw, 420px);
+      padding: 12px 18px;
+      border-radius: var(--r-sm);
+      background: var(--ink);
+      color: #ffffff;
+      font-size: 0.8125rem;
+      text-align: center;
+      opacity: 0;
+      transform: translate(-50%, 12px);
+      pointer-events: none;
+      transition: opacity var(--base) var(--ease), transform var(--base) var(--ease);
+    }
+
+    .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+    /* ══════════════════════════════════════════════════════════
+       16. อินโทร SI GROUP (ซูมผ่านตัว R)
+       ══════════════════════════════════════════════════════════ */
+    .si-intro {
+      position: fixed;
+      inset: 0;
+      z-index: 900;
+      display: grid;
+      place-items: center;
+      background: var(--navy-deep);
+      animation: siFade 320ms var(--ease) 1720ms forwards;
+    }
+
+    @keyframes siFade { to { opacity: 0; visibility: hidden; } }
+
+    .si-loader-word {
+      display: inline-flex;
+      color: #ffffff;
+      font-size: clamp(2rem, 8vw, 5rem);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      transform-origin: var(--si-origin-x, 50%) var(--si-origin-y, 50%);
+    }
+
+    .si-loader-word.is-running {
+      animation: siZoom 1700ms cubic-bezier(0.66, 0, 0.34, 1) forwards;
+    }
+
+    @keyframes siZoom {
+      0% { transform: translate(0, 0) scale(1); }
+      36% { transform: translate(0, 0) scale(1); }
+      100% {
+        transform: translate(var(--si-shift-x, 0), var(--si-shift-y, 0)) scale(var(--si-zoom, 60));
+      }
+    }
+
+    .si-loader-target { color: var(--gold); }
+
+    /* ══════════════════════════════════════════════════════════
+       17. RESPONSIVE
+       ══════════════════════════════════════════════════════════ */
+    @media (max-width: 1140px) {
+      .news-wrap { grid-template-columns: minmax(0, 1fr); }
+      .contact-wrap { grid-template-columns: minmax(0, 1fr); }
+      .footer-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    }
+
+    @media (max-width: 980px) {
+      .kpi-row { grid-template-columns: repeat(2, 1fr); }
+      .kpi { border-left: 0; padding-inline: 0; }
+      .kpi:nth-child(even) { padding-left: clamp(12px, 2vw, 24px); border-left: 1px solid var(--line); }
+      .cal-wrap { grid-template-columns: minmax(0, 1fr); }
+      .main-nav { order: 3; flex-basis: 100%; height: 46px; border-top: 1px solid var(--line); }
+      .nav-link { height: 46px; }
+      .header-row { flex-wrap: wrap; padding-bottom: 0; }
+      .header-tools { margin-left: auto; }
+      html { scroll-padding-top: 140px; }
+    }
+
+    @media (max-width: 760px) {
+      .news-feature { grid-template-columns: minmax(0, 1fr); }
+      .feature-media { aspect-ratio: 16 / 9; }
+      .search-box { width: 150px; }
+      .footer-main { grid-template-columns: minmax(0, 1fr); }
+      .util-links a span { display: none; }
+      .hero-nav { left: var(--gut); right: var(--gut); justify-content: space-between; }
+    }
+
+    @media (max-width: 520px) {
+      .kpi-row { grid-template-columns: 1fr; }
+      .kpi:nth-child(even) { padding-left: 0; border-left: 0; }
+      .kpi { border-top: 1px solid var(--line); }
+      .kpi:first-child { border-top: 0; }
+      .news-row { grid-template-columns: 84px minmax(0, 1fr); }
+      .search-box { display: none; }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       18. ลดการเคลื่อนไหว
+       ══════════════════════════════════════════════════════════ */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="si-intro" id="siIntro" aria-hidden="true">
+    <span class="si-loader-word" id="siIntroWord"><span>SI G</span><span class="si-loader-target" id="siIntroTarget">R</span><span>OUP</span></span>
+  </div>
+
+  <!-- ══════════════════ แถบบนสุด ══════════════════ -->
+  <div class="util-bar">
+    <div class="shell util-row">
+      <span class="util-clock">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5.2l3.2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="clockDate">—</span>
+        <span class="util-sep">|</span>
+        <b id="clockTime">--:--:--</b>
+      </span>
+
+      <span class="util-links">
+        <a href="rules.php">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 2.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V4A1.5 1.5 0 0 1 7 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 2.5v3.2A1.3 1.3 0 0 0 15.3 7h3.2" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          <span data-i18n="orgRules">กฎระเบียบข้อบังคับ</span>
+        </a>
+        <a href="mailto:<?php echo announcement_h($mailIt); ?>">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16v12H4V6Zm0 .5 8 6 8-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span data-i18n="utilHelp">แจ้งปัญหาระบบ</span>
+        </a>
+        <a href="announcements_admin.php">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span data-i18n="orgAdmin">เข้าสู่ระบบผู้ดูแล</span>
+        </a>
+      </span>
+    </div>
+  </div>
+
+  <!-- ══════════════════ แถบเมนูหลัก ══════════════════ -->
+  <header class="site-header">
+    <div class="shell header-row">
+      <a class="brand" href="index.php" aria-label="SUPAVUT GROUP">
+        <img class="brand-mark" src="img/3si.png" alt="">
+        <span class="brand-name">
+          <b>SUPAVUT</b>
+          <span>GROUP</span>
+        </span>
+      </a>
+
+      <nav class="main-nav" id="mainNav" aria-label="เมนูหลัก">
+        <a class="nav-link is-active" href="#news" data-nav="news" data-i18n="navNews">ประกาศ</a>
+        <a class="nav-link" href="#apps" data-nav="apps" data-i18n="navApps">ระบบงาน</a>
+        <a class="nav-link" href="#calendar" data-nav="calendar" data-i18n="navCalendar">ปฏิทินบริษัท</a>
+        <a class="nav-link" href="#org" data-nav="org" data-i18n="navOrg">เอกสารองค์กร</a>
+        <a class="nav-link" href="#contact" data-nav="contact" data-i18n="navContact">ติดต่อ</a>
+      </nav>
+
+      <div class="header-tools">
+        <div class="search-box" id="searchBox">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input type="search" id="appSearch" autocomplete="off" placeholder="ค้นหาระบบงาน" data-i18n-placeholder="searchPlaceholder" aria-label="ค้นหาระบบงาน">
+          <button class="search-clear" id="searchClear" type="button" aria-label="ล้างคำค้น">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <div class="pop">
+          <button class="icon-btn" id="orgBtn" type="button" aria-label="เมนู" aria-expanded="false" aria-haspopup="true">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <div class="pop-panel" id="orgPanel" role="menu">
+            <p class="pop-label" data-i18n="orgTitle">ข้อมูลองค์กร</p>
+            <a class="pop-item" href="rules.php" role="menuitem">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 2.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V4A1.5 1.5 0 0 1 7 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 2.5v3.2A1.3 1.3 0 0 0 15.3 7h3.2M9 12.5h6M9 16h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span data-i18n="orgRules">กฎระเบียบข้อบังคับ</span>
+            </a>
+            <button class="pop-item" type="button" role="menuitem" data-open="calendar">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6.5ZM4 9.5h16M8.5 3v4M15.5 3v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span data-i18n="calTitle">ปฏิทินบริษัท</span>
+            </button>
+            <button class="pop-item" type="button" role="menuitem" data-soon>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5h4v4h-4v-4ZM4 16.5h4v4H4v-4Zm12 0h4v4h-4v-4ZM14 18.5H6v-4h12v4M12 7.5v7" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              <span data-i18n="orgChart">แผนผังองค์กร</span>
+            </button>
+            <div class="pop-divider"></div>
+            <a class="pop-item" href="announcements_admin.php" role="menuitem">
+              <img src="img/login-logo.png" alt="" style="width:18px;height:18px;object-fit:contain">
+              <span data-i18n="orgAdmin">เข้าสู่ระบบผู้ดูแล</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="pop">
+          <button class="lang-btn" id="langBtn" type="button" aria-label="เปลี่ยนภาษา" aria-expanded="false" aria-haspopup="true">
+            <img id="langFlag" src="img/flags/th.png" alt="">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="pop-panel" id="langPanel" role="menu">
+            <button class="pop-item" type="button" role="menuitem" data-lang="th"><img src="img/flags/th.png" alt=""><span>ไทย</span></button>
+            <button class="pop-item" type="button" role="menuitem" data-lang="en"><img src="img/flags/en.png" alt=""><span>English</span></button>
+            <button class="pop-item" type="button" role="menuitem" data-lang="my"><img src="img/flags/my.png" alt=""><span>မြန်မာ</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════ HERO ══════════════════ -->
+  <section class="hero" aria-label="ภาพประชาสัมพันธ์">
+    <div class="hero-stage" id="heroStage">
+      <?php foreach ($galleryImages as $gIndex => $gUrl) { ?>
+        <div class="hero-slide<?php echo $gIndex === 0 ? ' is-on' : ''; ?>" data-slide="<?php echo (int) $gIndex; ?>">
+          <img src="<?php echo announcement_h($gUrl); ?>" alt="" <?php echo $gIndex === 0 ? '' : 'loading="lazy"'; ?>>
+        </div>
+      <?php } ?>
+      <div class="hero-veil" aria-hidden="true"></div>
+
+      <div class="hero-inner">
+        <div class="shell">
+          <div class="hero-copy">
+            <span class="hero-eyebrow" data-i18n="heroEyebrow">Intranet Portal</span>
+            <h1 data-i18n="heroTitle">ยินดีต้อนรับสู่ SUPAVUT GROUP</h1>
+            <p data-i18n="heroText">ศูนย์รวมประกาศจากฝ่ายบุคคล ระบบงานภายใน ปฏิทินบริษัท และเอกสารองค์กร รวมไว้ในหน้าเดียว</p>
+            <div class="hero-cta">
+              <a class="btn btn-primary" href="#news">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5.5h11a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5.5Zm12 3h3a1 1 0 0 1 1 1V17a2 2 0 0 1-4 0M7 9h5M7 12.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span data-i18n="heroCtaNews">อ่านประกาศล่าสุด</span>
+              </a>
+              <a class="btn btn-outline" href="#apps">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4.5h6v6H4v-6Zm10 0h6v6h-6v-6ZM4 13.5h6v6H4v-6Zm10 0h6v6h-6v-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                <span data-i18n="heroCtaApps">เข้าระบบงาน</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <?php if (count($galleryImages) > 1) { ?>
+        <div class="hero-nav">
+          <div class="hero-dots" id="heroDots" role="tablist" aria-label="เลือกภาพ">
+            <?php foreach ($galleryImages as $dIndex => $dUrl) { ?>
+              <button type="button" role="tab" data-dot="<?php echo (int) $dIndex; ?>" aria-current="<?php echo $dIndex === 0 ? 'true' : 'false'; ?>" aria-label="ภาพที่ <?php echo (int) $dIndex + 1; ?>"></button>
+            <?php } ?>
+          </div>
+          <button class="hero-arrow" type="button" data-hero="prev" aria-label="ภาพก่อนหน้า">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m15 18-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="hero-arrow" type="button" data-hero="next" aria-label="ภาพถัดไป">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      <?php } ?>
+    </div>
+  </section>
+
+  <!-- ══════════════════ แถบตัวเลขสรุป ══════════════════ -->
+  <div class="kpi-strip">
+    <div class="shell kpi-row">
+      <div class="kpi">
+        <span class="kpi-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.5h11a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5.5Zm12 3h3a1 1 0 0 1 1 1V17a2 2 0 0 1-4 0M7 9h5M7 12.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="kpi-text">
+          <b><?php echo count($announcements); ?></b>
+          <span data-i18n="kpiNews">ประกาศทั้งหมด</span>
+        </span>
+      </div>
+
+      <div class="kpi">
+        <span class="kpi-ico green" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 4.5h6v6H4v-6Zm10 0h6v6h-6v-6ZM4 13.5h6v6H4v-6Zm10 0h6v6h-6v-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="kpi-text">
+          <b><?php echo count($appRows); ?></b>
+          <span data-i18n="kpiApps">ระบบงานภายใน</span>
+        </span>
+      </div>
+
+      <div class="kpi">
+        <span class="kpi-ico gold" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6.5ZM4 9.5h16M8.5 3v4M15.5 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="kpi-text">
+          <b id="kpiHoliday">—</b>
+          <span data-i18n="kpiHoliday">วันหยุดถัดไป</span>
+        </span>
+      </div>
+
+      <div class="kpi">
+        <span class="kpi-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M7 2.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V4A1.5 1.5 0 0 1 7 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 2.5v3.2A1.3 1.3 0 0 0 15.3 7h3.2M9 12.5h6M9 16h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="kpi-text">
+          <b>3</b>
+          <span data-i18n="kpiRules">ฉบับกฎระเบียบ</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <!-- ══════════════════ ประกาศ ══════════════════ -->
+    <section class="section" id="news">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow" data-i18n="eyebrowNews">Announcements</span>
+            <h2 data-i18n="newsTitle">ประกาศจากฝ่ายบุคคล</h2>
+            <p data-i18n="newsSub">ข่าวสาร ประกาศ และเอกสารแจ้งพนักงานทุกฉบับ</p>
+          </div>
+        </div>
+
+        <?php if (count($announcements) === 0) { ?>
+          <div class="empty">
+            <b data-i18n="newsEmptyTitle">ยังไม่มีประกาศ</b>
+            <span data-i18n="newsEmptyText">เมื่อ HR เผยแพร่ประกาศ จะแสดงที่นี่</span>
+          </div>
+
+        <?php } else { ?>
+          <div class="chips" role="tablist" aria-label="หมวดประกาศ">
+            <button class="chip" role="tab" type="button" data-cat="" aria-selected="true">
+              <span data-i18n="catAll">ทั้งหมด</span><small><?php echo count($announcements); ?></small>
+            </button>
+            <?php foreach ($newsCategories as $cat) { ?>
+              <?php $count = isset($categoryCounts[$cat['id']]) ? $categoryCounts[$cat['id']] : 0; ?>
+              <button class="chip" role="tab" type="button" data-cat="<?php echo announcement_h($cat['id']); ?>" aria-selected="false"
+                      data-name-th="<?php echo announcement_h(announcement_category_name($cat, 'th')); ?>"
+                      data-name-en="<?php echo announcement_h(announcement_category_name($cat, 'en')); ?>"
+                      data-name-my="<?php echo announcement_h(announcement_category_name($cat, 'my')); ?>">
+                <span><?php echo announcement_h(announcement_category_name($cat, 'th')); ?></span><small><?php echo $count; ?></small>
+              </button>
+            <?php } ?>
+          </div>
+
+          <div class="news-wrap">
+            <div>
+              <?php /* ── ประกาศเด่น ── */ ?>
+              <?php
+                $fCat = announcement_category_of($featured);
+                $fCatObj = $fCat !== '' ? announcement_category_find($fCat) : null;
+                $fCover = announcement_cover_url($featured);
+              ?>
+              <a class="news-feature" href="announcement_view.php?id=<?php echo urlencode($featured['id']); ?>"
+                 data-news data-cat="<?php echo announcement_h($fCat); ?>"
+                 data-title-th="<?php echo announcement_h(announcement_localized_title($featured, 'th')); ?>"
+                 data-title-en="<?php echo announcement_h(announcement_localized_title($featured, 'en')); ?>"
+                 data-title-my="<?php echo announcement_h(announcement_localized_title($featured, 'my')); ?>"
+                 data-body-th="<?php echo announcement_h(announcement_excerpt(announcement_localized_body($featured, 'th'), 220)); ?>"
+                 data-body-en="<?php echo announcement_h(announcement_excerpt(announcement_localized_body($featured, 'en'), 220)); ?>"
+                 data-body-my="<?php echo announcement_h(announcement_excerpt(announcement_localized_body($featured, 'my'), 220)); ?>">
+                <div class="feature-media">
+                  <?php if ($fCover !== '') { ?>
+                    <img src="<?php echo announcement_h($fCover); ?>" alt="">
+                  <?php } else { ?>
+                    <div class="media-blank">NEWS</div>
+                  <?php } ?>
+                  <div class="date-tag" aria-hidden="true">
+                    <strong><?php echo announcement_h(announcement_date_day($featured['created_at'])); ?></strong>
+                    <span><?php echo announcement_h(announcement_date_month_short_th($featured['created_at'])); ?></span>
+                  </div>
+                </div>
+
+                <div class="feature-body">
+                  <div class="news-meta">
+                    <?php if ($fCatObj) { ?>
+                      <span class="tag tag-cat" data-cat-tag="<?php echo announcement_h($fCat); ?>"><?php echo announcement_h(announcement_category_name($fCatObj, 'th')); ?></span>
+                    <?php } ?>
+                    <?php if (announcement_is_new($featured)) { ?>
+                      <span class="tag tag-new" data-i18n="tagNew">ใหม่</span>
+                    <?php } ?>
+                    <?php if (announcement_is_pinned($featured)) { ?>
+                      <span class="tag tag-pin" data-i18n="tagPinned">ปักหมุด</span>
+                    <?php } ?>
+                    <span class="news-when"><?php echo announcement_h(announcement_format_date($featured['created_at'])); ?></span>
+                  </div>
+
+                  <h3 data-title><?php echo announcement_h(announcement_localized_title($featured, 'th')); ?></h3>
+                  <p data-body><?php echo announcement_h(announcement_excerpt(announcement_localized_body($featured, 'th'), 220)); ?></p>
+
+                  <span class="feature-more">
+                    <span data-i18n="readMore">อ่านประกาศฉบับเต็ม</span>
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </span>
+                </div>
+              </a>
+
+              <?php /* ── ประกาศที่เหลือ ── */ ?>
+              <div class="news-list" id="newsList">
+                <?php foreach ($announcements as $nRow => $item) { ?>
+                  <?php if ($nRow === 0) { continue; } ?>
+                  <?php
+                    $iCat = announcement_category_of($item);
+                    $iCatObj = $iCat !== '' ? announcement_category_find($iCat) : null;
+                    $iCover = announcement_cover_url($item);
+                  ?>
+                  <a class="news-row<?php echo announcement_is_pinned($item) ? ' is-pinned' : ''; ?>" href="announcement_view.php?id=<?php echo urlencode($item['id']); ?>"
+                     data-news data-cat="<?php echo announcement_h($iCat); ?>"
+                     data-title-th="<?php echo announcement_h(announcement_localized_title($item, 'th')); ?>"
+                     data-title-en="<?php echo announcement_h(announcement_localized_title($item, 'en')); ?>"
+                     data-title-my="<?php echo announcement_h(announcement_localized_title($item, 'my')); ?>"
+                     data-body-th="<?php echo announcement_h(announcement_excerpt(announcement_localized_body($item, 'th'))); ?>"
+                     data-body-en="<?php echo announcement_h(announcement_excerpt(announcement_localized_body($item, 'en'))); ?>"
+                     data-body-my="<?php echo announcement_h(announcement_excerpt(announcement_localized_body($item, 'my'))); ?>">
+                    <div class="row-thumb">
+                      <?php if ($iCover !== '') { ?>
+                        <img src="<?php echo announcement_h($iCover); ?>" alt="" loading="lazy">
+                      <?php } else { ?>
+                        <div class="media-blank">NEWS</div>
+                      <?php } ?>
+                    </div>
+
+                    <div class="row-body">
+                      <div class="news-meta">
+                        <?php if ($iCatObj) { ?>
+                          <span class="tag tag-cat" data-cat-tag="<?php echo announcement_h($iCat); ?>"><?php echo announcement_h(announcement_category_name($iCatObj, 'th')); ?></span>
+                        <?php } ?>
+                        <?php if (announcement_is_new($item)) { ?>
+                          <span class="tag tag-new" data-i18n="tagNew">ใหม่</span>
+                        <?php } ?>
+                        <span class="news-when"><?php echo announcement_h(announcement_format_date($item['created_at'])); ?></span>
+                      </div>
+                      <h4 data-title><?php echo announcement_h(announcement_localized_title($item, 'th')); ?></h4>
+                      <p data-body><?php echo announcement_h(announcement_excerpt(announcement_localized_body($item, 'th'))); ?></p>
+                    </div>
+                  </a>
+                <?php } ?>
+              </div>
+
+              <div class="empty" id="newsNone" hidden>
+                <b data-i18n="newsNoneTitle">ไม่มีประกาศในหมวดนี้</b>
+                <span data-i18n="newsNoneText">ลองเลือกหมวดอื่น</span>
+              </div>
+            </div>
+
+            <!-- ── แถบข้าง ── -->
+            <aside>
+              <?php
+                $pinnedItems = array();
+                foreach ($announcements as $pItem) {
+                  if (announcement_is_pinned($pItem)) {
+                    $pinnedItems[] = $pItem;
+                  }
+                  if (count($pinnedItems) >= 5) {
+                    break;
+                  }
+                }
+              ?>
+              <?php if (count($pinnedItems) > 0) { ?>
+                <div class="side-card">
+                  <div class="side-head">
+                    <h3>
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1Z" fill="currentColor"/></svg>
+                      <span data-i18n="pinnedTitle">ประกาศปักหมุด</span>
+                    </h3>
+                  </div>
+                  <div class="side-body">
+                    <?php foreach ($pinnedItems as $pItem) { ?>
+                      <a class="pin-item" href="announcement_view.php?id=<?php echo urlencode($pItem['id']); ?>"
+                         data-news
+                         data-title-th="<?php echo announcement_h(announcement_localized_title($pItem, 'th')); ?>"
+                         data-title-en="<?php echo announcement_h(announcement_localized_title($pItem, 'en')); ?>"
+                         data-title-my="<?php echo announcement_h(announcement_localized_title($pItem, 'my')); ?>">
+                        <span><?php echo announcement_h(announcement_format_date($pItem['created_at'])); ?></span>
+                        <b data-title><?php echo announcement_h(announcement_localized_title($pItem, 'th')); ?></b>
+                      </a>
+                    <?php } ?>
+                  </div>
+                </div>
+              <?php } ?>
+
+              <div class="side-card">
+                <div class="side-head">
+                  <h3>
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                    <span data-i18n="quickTitle">ทางลัด</span>
+                  </h3>
+                </div>
+                <div class="side-body">
+                  <a class="quick-link" href="rules.php">
+                    <span class="ql-ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 2.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V4A1.5 1.5 0 0 1 7 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 12.5h6M9 16h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+                    <span data-i18n="orgRules">กฎระเบียบข้อบังคับ</span>
+                    <span class="ql-go"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </a>
+                  <button class="quick-link" type="button" data-open="calendar" style="width:100%">
+                    <span class="ql-ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6.5ZM4 9.5h16M8.5 3v4M15.5 3v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    <span data-i18n="calFullYear">ปฏิทินทั้ง 12 เดือน</span>
+                    <span class="ql-go"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </button>
+                  <button class="quick-link" type="button" data-open="map" style="width:100%">
+                    <span class="ql-ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.8 7-11a7 7 0 1 0-14 0c0 5.2 7 11 7 11Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.5"/></svg></span>
+                    <span data-i18n="mapTitle">แผนที่บริษัท</span>
+                    <span class="ql-go"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </button>
+                  <a class="quick-link" href="announcements_admin.php">
+                    <span class="ql-ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    <span data-i18n="orgAdmin">เข้าสู่ระบบผู้ดูแล</span>
+                    <span class="ql-go"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </a>
+                </div>
+              </div>
+            </aside>
+          </div>
+        <?php } ?>
+      </div>
+    </section>
+
+    <!-- ══════════════════ ระบบงาน ══════════════════ -->
+    <section class="section alt" id="apps">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow" data-i18n="eyebrowApps">Applications</span>
+            <h2 data-i18n="appsTitle">ระบบงานภายใน</h2>
+            <p data-i18n="appsSub">เลือกหมวดหรือค้นหาระบบที่ต้องการ</p>
+          </div>
+          <span class="head-link" id="appsCount"></span>
+        </div>
+
+        <div class="apps-bar">
+          <div class="chips" id="appChips" role="tablist" aria-label="หมวดระบบงาน"></div>
+        </div>
+
+        <div class="app-grid" id="appGrid" aria-live="polite"></div>
+
+        <div class="empty" id="appNone" hidden>
+          <b data-i18n="appsNoneTitle">ไม่พบระบบที่ค้นหา</b>
+          <span data-i18n="appsNoneText">ลองเปลี่ยนคำค้นหรือเลือกหมวดอื่น</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ ปฏิทิน ══════════════════ -->
+    <section class="section" id="calendar">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow" data-i18n="eyebrowCalendar">Calendar</span>
+            <h2 data-i18n="calTitle">ปฏิทินบริษัท</h2>
+            <p data-i18n="calSub">วันหยุดประจำปีของสำนักงานและโรงงาน</p>
+          </div>
+          <button class="head-link" type="button" data-open="calendar">
+            <span data-i18n="calFullYear">ปฏิทินทั้ง 12 เดือน</span>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <div class="cal-wrap">
+          <div class="cal-card">
+            <div class="cal-top">
+              <div class="seg" role="tablist" aria-label="เลือกประเภทปฏิทิน">
+                <button role="tab" type="button" data-scope="office" aria-selected="true" data-i18n="scopeOffice">สำนักงาน</button>
+                <button role="tab" type="button" data-scope="factory" aria-selected="false" data-i18n="scopeFactory">โรงงาน</button>
+              </div>
+              <div class="month-nav">
+                <button type="button" data-shift="-1" aria-label="เดือนก่อนหน้า">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m15 18-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <b id="monthLabel">—</b>
+                <button type="button" data-shift="1" aria-label="เดือนถัดไป">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="cal-grid" id="miniCal"></div>
+            <div class="legend">
+              <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-sunday"><circle cx="12" cy="12" r="10"/></svg><span data-i18n="lgSunday">วันอาทิตย์</span></span>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-public"><rect x="2.5" y="3" width="19" height="18" rx="1"/></svg><span data-i18n="lgPublic">นักขัตฤกษ์</span></span>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-substitution"><polygon points="12,2 14.5,8.6 21.5,8.9 16,13.3 17.9,20.1 12,16.2 6.1,20.1 8,13.3 2.5,8.9 9.5,8.6"/></svg><span data-i18n="lgSubstitution">ชดเชยนักขัตฤกษ์</span></span>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-compensate"><polygon points="12,2.6 22,21.4 2,21.4"/></svg><span data-i18n="lgCompensate">หยุดชดเชย</span></span>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-vacation"><polygon points="12,2.5 21.5,12 12,21.5 2.5,12"/></svg><span data-i18n="lgVacation">พักผ่อน</span></span>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-special"><polygon points="7,3 17,3 22,12 17,21 7,21 2,12"/></svg><span data-i18n="lgSpecial">หยุดพิเศษ</span></span>
+            </div>
+          </div>
+
+          <div class="holiday-card">
+            <div class="holiday-head">
+              <h3 data-i18n="holidayTitle">วันหยุดในเดือนนี้</h3>
+              <span id="holidayScope">—</span>
+            </div>
+            <div class="holiday-list" id="holidayList"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ เอกสารองค์กร ══════════════════ -->
+    <section class="section alt" id="org">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow" data-i18n="eyebrowOrg">Company</span>
+            <h2 data-i18n="orgSectionTitle">เอกสารและข้อมูลองค์กร</h2>
+            <p data-i18n="orgSectionSub">ระเบียบ ข้อบังคับ และข้อมูลอ้างอิงของบริษัท</p>
+          </div>
+        </div>
+
+        <div class="org-grid">
+          <a class="org-card" href="rules.php">
+            <span class="org-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M7 2.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V4A1.5 1.5 0 0 1 7 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 2.5v3.2A1.3 1.3 0 0 0 15.3 7h3.2M9 12.5h6M9 16h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <h3 data-i18n="orgRules">กฎระเบียบข้อบังคับ</h3>
+            <p data-i18n="orgRulesText">ข้อบังคับเกี่ยวกับการทำงาน 3 ภาษา ไทย · English · မြန်မာ ดาวน์โหลดได้ทันที</p>
+            <span class="org-go">
+              <span data-i18n="orgOpen">เปิดดูเอกสาร</span>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </a>
+
+          <button class="org-card is-green" type="button" data-open="calendar" style="text-align:left">
+            <span class="org-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6.5ZM4 9.5h16M8.5 3v4M15.5 3v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <h3 data-i18n="orgCalendar">ปฏิทินวันหยุด 2569</h3>
+            <p data-i18n="orgCalendarText">วันหยุดนักขัตฤกษ์ วันหยุดชดเชย และวันหยุดพักผ่อน แยกสำนักงานกับโรงงาน</p>
+            <span class="org-go">
+              <span data-i18n="orgOpenCal">ดูทั้ง 12 เดือน</span>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </button>
+
+          <div class="org-card is-gold off" data-soon>
+            <span class="org-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5h4v4h-4v-4ZM4 16.5h4v4H4v-4Zm12 0h4v4h-4v-4ZM14 18.5H6v-4h12v4M12 7.5v7" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            </span>
+            <h3 data-i18n="orgChart">แผนผังองค์กร</h3>
+            <p data-i18n="orgChartText">โครงสร้างสายบังคับบัญชาและหน่วยงานภายในบริษัท</p>
+            <span class="org-go" data-i18n="orgSoon">กำลังจัดทำ</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ ติดต่อ ══════════════════ -->
+    <section class="section" id="contact">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow" data-i18n="eyebrowContact">Contact</span>
+            <h2 data-i18n="contactTitle">ติดต่อและที่ตั้ง</h2>
+            <p data-i18n="contactSub">ติดต่อทีมงานผ่านอีเมล หรือดูเส้นทางมาที่บริษัท</p>
+          </div>
+        </div>
+
+        <div class="contact-wrap">
+          <div class="contact-stack">
+            <a class="contact" href="mailto:<?php echo announcement_h($mailIt); ?>">
+              <span class="contact-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M7 9.5h5M7 13h8M7 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              </span>
+              <span class="contact-text">
+                <b data-i18n="contactItName">ฝ่าย IT</b>
+                <span data-i18n="contactItRole">ระบบงาน อุปกรณ์ และบัญชีผู้ใช้</span>
+                <span class="contact-mail">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16v12H4V6Zm0 .5 8 6 8-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <?php echo announcement_h($mailIt); ?>
+                </span>
+              </span>
+            </a>
+
+            <a class="contact" href="mailto:<?php echo announcement_h($mailHr); ?>">
+              <span class="contact-ico green" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="contact-text">
+                <b data-i18n="contactHrName">ฝ่ายบุคคล (HR)</b>
+                <span data-i18n="contactHrRole">ประกาศ สวัสดิการ และงานบุคคล</span>
+                <span class="contact-mail">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16v12H4V6Zm0 .5 8 6 8-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <?php echo announcement_h($mailHr); ?>
+                </span>
+              </span>
+            </a>
+          </div>
+
+          <div class="map-card">
+            <div class="map-head">
+              <h3 data-i18n="mapTitle">แผนที่บริษัท</h3>
+              <a class="head-link" href="<?php echo htmlspecialchars($companyMapOpenUrl, ENT_QUOTES); ?>" target="_blank" rel="noopener noreferrer">
+                <span data-i18n="mapOpenGoogle">เปิดใน Google Maps</span>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 5h5v5m0-5-7 7M18 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </a>
+            </div>
+            <div class="map-frame">
+              <iframe src="<?php echo htmlspecialchars($companyMapEmbedUrl, ENT_QUOTES); ?>" title="แผนที่ Supavut Industry" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+              <button class="map-open" type="button" data-open="map" aria-label="ขยายแผนที่"></button>
+              <span class="map-chip">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.8 7-11a7 7 0 1 0-14 0c0 5.2 7 11 7 11Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+                SUPAVUT INDUSTRY
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ══════════════════ FOOTER ══════════════════ -->
+  <footer class="site-footer">
+    <div class="shell footer-main">
+      <div>
+        <div class="footer-brand">
+          <img src="img/3si.png" alt="">
+          <span class="brand-name">
+            <b>SUPAVUT</b>
+            <span>GROUP</span>
+          </span>
+        </div>
+        <p data-i18n="footerAbout">ระบบอินทราเน็ตภายในของ SUPAVUT GROUP รวมประกาศจากฝ่ายบุคคล ระบบงานภายใน ปฏิทินบริษัท และเอกสารองค์กรไว้ในที่เดียว</p>
+      </div>
+
+      <div class="footer-col">
+        <h4 data-i18n="footerMenu">เมนู</h4>
+        <ul>
+          <li><a href="#news"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="navNews">ประกาศ</span></a></li>
+          <li><a href="#apps"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="navApps">ระบบงาน</span></a></li>
+          <li><a href="#calendar"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="navCalendar">ปฏิทินบริษัท</span></a></li>
+          <li><a href="rules.php"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="orgRules">กฎระเบียบข้อบังคับ</span></a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 data-i18n="footerContact">ติดต่อ</h4>
+        <ul>
+          <li><a href="mailto:<?php echo announcement_h($mailHr); ?>"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16v12H4V6Zm0 .5 8 6 8-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><?php echo announcement_h($mailHr); ?></a></li>
+          <li><a href="mailto:<?php echo announcement_h($mailIt); ?>"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16v12H4V6Zm0 .5 8 6 8-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><?php echo announcement_h($mailIt); ?></a></li>
+          <li><a href="<?php echo htmlspecialchars($companyMapOpenUrl, ENT_QUOTES); ?>" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.8 7-11a7 7 0 1 0-14 0c0 5.2 7 11 7 11Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg><span data-i18n="mapTitle">แผนที่บริษัท</span></a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="shell footer-bottom-row">
+        <span>© <span id="footYear">2026</span> SUPAVUT INDUSTRY CO., LTD. · <span data-i18n="footerBy">พัฒนาโดยฝ่าย IT</span></span>
+        <a class="to-top" href="#top">
+          <span data-i18n="toTop">กลับขึ้นด้านบน</span>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ══════════════════ MODAL: ปฏิทินเต็มปี ══════════════════ -->
+  <div class="modal" id="mCalendar" role="dialog" aria-modal="true" aria-labelledby="mCalTitle">
+    <div class="modal-bg" data-close></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="mCalTitle">ปฏิทินบริษัท 2026</h2>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="seg" role="tablist">
+            <button role="tab" type="button" data-mscope="office" aria-selected="true" data-i18n="scopeOffice">สำนักงาน</button>
+            <button role="tab" type="button" data-mscope="factory" aria-selected="false" data-i18n="scopeFactory">โรงงาน</button>
+          </div>
+          <button class="icon-btn" type="button" data-close aria-label="ปิด">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="year-grid" id="yearGrid"></div>
+      </div>
+
+      <div class="legend">
+        <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-sunday"><circle cx="12" cy="12" r="10"/></svg><span data-i18n="lgSunday">วันอาทิตย์</span></span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-public"><rect x="2.5" y="3" width="19" height="18" rx="1"/></svg><span data-i18n="lgPublic">นักขัตฤกษ์</span></span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-substitution"><polygon points="12,2 14.5,8.6 21.5,8.9 16,13.3 17.9,20.1 12,16.2 6.1,20.1 8,13.3 2.5,8.9 9.5,8.6"/></svg><span data-i18n="lgSubstitution">ชดเชยนักขัตฤกษ์</span></span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-compensate"><polygon points="12,2.6 22,21.4 2,21.4"/></svg><span data-i18n="lgCompensate">หยุดชดเชย</span></span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-vacation"><polygon points="12,2.5 21.5,12 12,21.5 2.5,12"/></svg><span data-i18n="lgVacation">พักผ่อน</span></span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true" class="mk m-special"><polygon points="7,3 17,3 22,12 17,21 7,21 2,12"/></svg><span data-i18n="lgSpecial">หยุดพิเศษ</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════ MODAL: แผนที่ ══════════════════ -->
+  <div class="modal" id="mMap" role="dialog" aria-modal="true" aria-labelledby="mMapTitle">
+    <div class="modal-bg" data-close></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="mMapTitle" data-i18n="mapTitle">แผนที่บริษัท</h2>
+        <button class="icon-btn" type="button" data-close aria-label="ปิด">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div style="aspect-ratio:16/10;background:var(--surface-3)">
+        <iframe src="<?php echo htmlspecialchars($companyMapEmbedUrl, ENT_QUOTES); ?>" title="แผนที่ Supavut Industry" style="width:100%;height:100%;border:0;display:block" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+      <div style="padding:14px 20px;border-top:1px solid var(--line)">
+        <a class="btn btn-primary btn-sm" href="<?php echo htmlspecialchars($companyMapOpenUrl, ENT_QUOTES); ?>" target="_blank" rel="noopener noreferrer" data-i18n="mapOpenGoogle">เปิดใน Google Maps</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    'use strict';
+
+    /* ══════════════════════════════════════════════════════════
+       1. ข้อมูลจากฝั่ง PHP
+       ══════════════════════════════════════════════════════════ */
+    var apps = <?php echo json_encode($appRows); ?>;
+    var appText = <?php echo count($appTextRows) > 0 ? json_encode($appTextRows) : '{}'; ?>;
+    var appCats = <?php echo json_encode($appCatRows); ?>;
+    var slideCount = <?php echo count($galleryImages); ?>;
+
+    /* ══════════════════════════════════════════════════════════
+       2. คำแปล 3 ภาษา
+       ══════════════════════════════════════════════════════════ */
+    var t = {
+      th: {
+        navNews: 'ประกาศ', navApps: 'ระบบงาน', navCalendar: 'ปฏิทินบริษัท', navOrg: 'เอกสารองค์กร', navContact: 'ติดต่อ',
+        searchPlaceholder: 'ค้นหาระบบงาน',
+        utilHelp: 'แจ้งปัญหาระบบ',
+        orgTitle: 'ข้อมูลองค์กร', orgRules: 'กฎระเบียบข้อบังคับ', orgAdmin: 'เข้าสู่ระบบผู้ดูแล', orgChart: 'แผนผังองค์กร',
+        heroEyebrow: 'Intranet Portal',
+        heroTitle: 'ยินดีต้อนรับสู่ SUPAVUT GROUP',
+        heroText: 'ศูนย์รวมประกาศจากฝ่ายบุคคล ระบบงานภายใน ปฏิทินบริษัท และเอกสารองค์กร รวมไว้ในหน้าเดียว',
+        heroCtaNews: 'อ่านประกาศล่าสุด', heroCtaApps: 'เข้าระบบงาน',
+        kpiNews: 'ประกาศทั้งหมด', kpiApps: 'ระบบงานภายใน', kpiHoliday: 'วันหยุดถัดไป', kpiRules: 'ฉบับกฎระเบียบ',
+        eyebrowNews: 'Announcements', newsTitle: 'ประกาศจากฝ่ายบุคคล', newsSub: 'ข่าวสาร ประกาศ และเอกสารแจ้งพนักงานทุกฉบับ',
+        catAll: 'ทั้งหมด', tagNew: 'ใหม่', tagPinned: 'ปักหมุด', readMore: 'อ่านประกาศฉบับเต็ม',
+        pinnedTitle: 'ประกาศปักหมุด', quickTitle: 'ทางลัด',
+        newsEmptyTitle: 'ยังไม่มีประกาศ', newsEmptyText: 'เมื่อ HR เผยแพร่ประกาศ จะแสดงที่นี่',
+        newsNoneTitle: 'ไม่มีประกาศในหมวดนี้', newsNoneText: 'ลองเลือกหมวดอื่น',
+        eyebrowApps: 'Applications', appsTitle: 'ระบบงานภายใน', appsSub: 'เลือกหมวดหรือค้นหาระบบที่ต้องการ',
+        appsNoneTitle: 'ไม่พบระบบที่ค้นหา', appsNoneText: 'ลองเปลี่ยนคำค้นหรือเลือกหมวดอื่น',
+        appsShowing: 'แสดง', appsOf: 'จาก', appsUnit: 'ระบบ',
+        eyebrowCalendar: 'Calendar', calTitle: 'ปฏิทินบริษัท', calSub: 'วันหยุดประจำปีของสำนักงานและโรงงาน',
+        calFullYear: 'ปฏิทินทั้ง 12 เดือน', calWord: 'ปฏิทิน',
+        scopeOffice: 'สำนักงาน', scopeFactory: 'โรงงาน',
+        holidayTitle: 'วันหยุดในเดือนนี้', noHoliday: 'ไม่มีวันหยุดในเดือนนี้',
+        eyebrowOrg: 'Company', orgSectionTitle: 'เอกสารและข้อมูลองค์กร', orgSectionSub: 'ระเบียบ ข้อบังคับ และข้อมูลอ้างอิงของบริษัท',
+        orgRulesText: 'ข้อบังคับเกี่ยวกับการทำงาน 3 ภาษา ไทย · English · မြန်မာ ดาวน์โหลดได้ทันที',
+        orgOpen: 'เปิดดูเอกสาร', orgCalendar: 'ปฏิทินวันหยุด 2569',
+        orgCalendarText: 'วันหยุดนักขัตฤกษ์ วันหยุดชดเชย และวันหยุดพักผ่อน แยกสำนักงานกับโรงงาน',
+        orgOpenCal: 'ดูทั้ง 12 เดือน',
+        orgChartText: 'โครงสร้างสายบังคับบัญชาและหน่วยงานภายในบริษัท', orgSoon: 'กำลังจัดทำ',
+        eyebrowContact: 'Contact', contactTitle: 'ติดต่อและที่ตั้ง', contactSub: 'ติดต่อทีมงานผ่านอีเมล หรือดูเส้นทางมาที่บริษัท',
+        contactItName: 'ฝ่าย IT', contactItRole: 'ระบบงาน อุปกรณ์ และบัญชีผู้ใช้',
+        contactHrName: 'ฝ่ายบุคคล (HR)', contactHrRole: 'ประกาศ สวัสดิการ และงานบุคคล',
+        mapTitle: 'แผนที่บริษัท', mapOpenGoogle: 'เปิดใน Google Maps',
+        footerAbout: 'ระบบอินทราเน็ตภายในของ SUPAVUT GROUP รวมประกาศจากฝ่ายบุคคล ระบบงานภายใน ปฏิทินบริษัท และเอกสารองค์กรไว้ในที่เดียว',
+        footerMenu: 'เมนู', footerContact: 'ติดต่อ', footerBy: 'พัฒนาโดยฝ่าย IT', toTop: 'กลับขึ้นด้านบน',
+        lgSunday: 'วันอาทิตย์', lgPublic: 'นักขัตฤกษ์', lgSubstitution: 'ชดเชยนักขัตฤกษ์',
+        lgCompensate: 'หยุดชดเชย', lgVacation: 'พักผ่อน', lgSpecial: 'หยุดพิเศษ',
+        soon: 'กำลังเตรียมเอกสารนี้', noLink: 'ยังไม่มีลิงก์ระบบนี้'
+      },
+      en: {
+        navNews: 'News', navApps: 'Applications', navCalendar: 'Calendar', navOrg: 'Documents', navContact: 'Contact',
+        searchPlaceholder: 'Search applications',
+        utilHelp: 'Report an issue',
+        orgTitle: 'Company info', orgRules: 'Work rules and regulations', orgAdmin: 'Admin sign in', orgChart: 'Organisation chart',
+        heroEyebrow: 'Intranet Portal',
+        heroTitle: 'Welcome to SUPAVUT GROUP',
+        heroText: 'HR announcements, internal applications, the company calendar and corporate documents — all in one place.',
+        heroCtaNews: 'Read latest news', heroCtaApps: 'Open applications',
+        kpiNews: 'Announcements', kpiApps: 'Internal systems', kpiHoliday: 'Next holiday', kpiRules: 'Rule documents',
+        eyebrowNews: 'Announcements', newsTitle: 'HR Announcements', newsSub: 'News, notices and employee documents.',
+        catAll: 'All', tagNew: 'New', tagPinned: 'Pinned', readMore: 'Read full announcement',
+        pinnedTitle: 'Pinned announcements', quickTitle: 'Quick links',
+        newsEmptyTitle: 'No announcements yet', newsEmptyText: 'HR announcements will appear here.',
+        newsNoneTitle: 'No announcements in this topic', newsNoneText: 'Try another topic.',
+        eyebrowApps: 'Applications', appsTitle: 'Internal applications', appsSub: 'Pick a category or search for a system.',
+        appsNoneTitle: 'No applications found', appsNoneText: 'Try a different search or category.',
+        appsShowing: 'Showing', appsOf: 'of', appsUnit: 'systems',
+        eyebrowCalendar: 'Calendar', calTitle: 'Company calendar', calSub: 'Annual holidays for office and factory.',
+        calFullYear: 'View all 12 months', calWord: 'Calendar',
+        scopeOffice: 'Office', scopeFactory: 'Factory',
+        holidayTitle: 'Holidays this month', noHoliday: 'No holidays this month',
+        eyebrowOrg: 'Company', orgSectionTitle: 'Corporate documents', orgSectionSub: 'Rules, regulations and company reference material.',
+        orgRulesText: 'Work rules and regulations in Thai, English and Myanmar — ready to download.',
+        orgOpen: 'Open documents', orgCalendar: 'Holiday calendar 2026',
+        orgCalendarText: 'Public holidays, compensation days and vacation days for office and factory.',
+        orgOpenCal: 'View all 12 months',
+        orgChartText: 'Reporting lines and internal departments of the company.', orgSoon: 'In preparation',
+        eyebrowContact: 'Contact', contactTitle: 'Contact and location', contactSub: 'Reach the team by email or find your way to the office.',
+        contactItName: 'IT Department', contactItRole: 'Systems, equipment and user accounts',
+        contactHrName: 'Human Resources', contactHrRole: 'Announcements, welfare and HR matters',
+        mapTitle: 'Company map', mapOpenGoogle: 'Open in Google Maps',
+        footerAbout: 'The SUPAVUT GROUP intranet brings HR announcements, internal applications, the company calendar and corporate documents together in one place.',
+        footerMenu: 'Menu', footerContact: 'Contact', footerBy: 'Developed by IT Department', toTop: 'Back to top',
+        lgSunday: 'Sunday', lgPublic: 'Public holiday', lgSubstitution: 'Substitution holiday',
+        lgCompensate: 'Compensation holiday', lgVacation: 'Vacation', lgSpecial: 'Special holiday',
+        soon: 'This document is being prepared.', noLink: 'No link for this system yet'
+      },
+      my: {
+        navNews: 'သတင်း', navApps: 'အက်ပ်များ', navCalendar: 'ပြက္ခဒိန်', navOrg: 'စာရွက်စာတမ်း', navContact: 'ဆက်သွယ်ရန်',
+        searchPlaceholder: 'အက်ပ် ရှာရန်',
+        utilHelp: 'ပြဿနာ တိုင်ကြားရန်',
+        orgTitle: 'ကုမ္ပဏီအချက်အလက်', orgRules: 'လုပ်ငန်းစည်းမျဉ်းများ', orgAdmin: 'Admin ဝင်ရောက်ရန်', orgChart: 'ဖွဲ့စည်းပုံ',
+        heroEyebrow: 'Intranet Portal',
+        heroTitle: 'SUPAVUT GROUP မှ ကြိုဆိုပါသည်',
+        heroText: 'HR ကြေညာချက်များ၊ အတွင်းပိုင်းအက်ပ်များ၊ ကုမ္ပဏီပြက္ခဒိန်နှင့် စာရွက်စာတမ်းများကို တစ်နေရာတည်းတွင် စုစည်းထားသည်။',
+        heroCtaNews: 'နောက်ဆုံးသတင်း', heroCtaApps: 'အက်ပ်များ ဖွင့်ရန်',
+        kpiNews: 'ကြေညာချက်များ', kpiApps: 'အတွင်းပိုင်းစနစ်', kpiHoliday: 'နောက်အားလပ်ရက်', kpiRules: 'စည်းမျဉ်းစာစောင်',
+        eyebrowNews: 'Announcements', newsTitle: 'HR ကြေညာချက်များ', newsSub: 'သတင်း၊ ကြေညာချက်နှင့် ဝန်ထမ်းစာရွက်စာတမ်းများ။',
+        catAll: 'အားလုံး', tagNew: 'အသစ်', tagPinned: 'ပင်တွဲထား', readMore: 'အပြည့်အစုံ ဖတ်ရန်',
+        pinnedTitle: 'ပင်တွဲထားသော ကြေညာချက်', quickTitle: 'အမြန်လင့်ခ်',
+        newsEmptyTitle: 'ကြေညာချက် မရှိသေးပါ', newsEmptyText: 'HR ကြေညာချက်များ ဤနေရာတွင် ပေါ်ပါမည်။',
+        newsNoneTitle: 'ဤခေါင်းစဉ်တွင် ကြေညာချက် မရှိပါ', newsNoneText: 'အခြားခေါင်းစဉ် ရွေးကြည့်ပါ။',
+        eyebrowApps: 'Applications', appsTitle: 'အတွင်းပိုင်း အက်ပ်များ', appsSub: 'အမျိုးအစားရွေးပါ သို့မဟုတ် စနစ်ကို ရှာပါ။',
+        appsNoneTitle: 'အက်ပ် မတွေ့ပါ', appsNoneText: 'အခြားစကားလုံး သို့မဟုတ် အမျိုးအစား စမ်းကြည့်ပါ။',
+        appsShowing: 'ပြသနေသည်', appsOf: '/', appsUnit: 'စနစ်',
+        eyebrowCalendar: 'Calendar', calTitle: 'ကုမ္ပဏီ ပြက္ခဒိန်', calSub: 'ရုံးနှင့် စက်ရုံအတွက် နှစ်စဉ်အားလပ်ရက်များ။',
+        calFullYear: 'လ ၁၂ လ အားလုံး', calWord: 'ပြက္ခဒိန်',
+        scopeOffice: 'ရုံး', scopeFactory: 'စက်ရုံ',
+        holidayTitle: 'ဤလ၏ အားလပ်ရက်များ', noHoliday: 'ဤလတွင် အားလပ်ရက် မရှိပါ',
+        eyebrowOrg: 'Company', orgSectionTitle: 'ကုမ္ပဏီ စာရွက်စာတမ်းများ', orgSectionSub: 'စည်းမျဉ်း၊ စည်းကမ်းနှင့် ကိုးကားချက်များ။',
+        orgRulesText: 'ထိုင်း၊ အင်္ဂလိပ်နှင့် မြန်မာ ၃ ဘာသာဖြင့် လုပ်ငန်းစည်းမျဉ်းများ ဒေါင်းလုဒ်ရယူနိုင်သည်။',
+        orgOpen: 'စာရွက်စာတမ်း ဖွင့်ရန်', orgCalendar: '၂၀၂၆ အားလပ်ရက် ပြက္ခဒိန်',
+        orgCalendarText: 'ရုံးနှင့် စက်ရုံအလိုက် အများပြည်သူအားလပ်ရက်၊ အစားထိုးနားရက်နှင့် အားလပ်ရက်များ။',
+        orgOpenCal: 'လ ၁၂ လ ကြည့်ရန်',
+        orgChartText: 'ကုမ္ပဏီ၏ ဌာနများနှင့် အုပ်ချုပ်မှုဖွဲ့စည်းပုံ။', orgSoon: 'ပြင်ဆင်နေဆဲ',
+        eyebrowContact: 'Contact', contactTitle: 'ဆက်သွယ်ရန်နှင့် တည်နေရာ', contactSub: 'အီးမေးလ်ဖြင့် ဆက်သွယ်ပါ သို့မဟုတ် လမ်းကြောင်း ကြည့်ပါ။',
+        contactItName: 'IT ဌာန', contactItRole: 'စနစ်များ၊ ပစ္စည်းများနှင့် အသုံးပြုသူအကောင့်',
+        contactHrName: 'လူ့စွမ်းအားအရင်းအမြစ် (HR)', contactHrRole: 'ကြေညာချက်၊ သက်သာချောင်ချိရေးနှင့် HR',
+        mapTitle: 'ကုမ္ပဏီ မြေပုံ', mapOpenGoogle: 'Google Maps တွင် ဖွင့်ရန်',
+        footerAbout: 'SUPAVUT GROUP ၏ အတွင်းပိုင်းကွန်ရက်စနစ်ဖြစ်ပြီး ကြေညာချက်၊ အက်ပ်များ၊ ပြက္ခဒိန်နှင့် စာရွက်စာတမ်းများကို စုစည်းထားသည်။',
+        footerMenu: 'မီနူး', footerContact: 'ဆက်သွယ်ရန်', footerBy: 'IT ဌာနမှ ဖန်တီးသည်', toTop: 'အပေါ်သို့',
+        lgSunday: 'တနင်္ဂနွေ', lgPublic: 'အများပြည်သူ အားလပ်ရက်', lgSubstitution: 'အစားထိုး အားလပ်ရက်',
+        lgCompensate: 'အစားထိုးနားရက်', lgVacation: 'အားလပ်ရက်', lgSpecial: 'အထူးအားလပ်ရက်',
+        soon: 'ဤစာရွက်စာတမ်း ပြင်ဆင်နေပါသည်။', noLink: 'ဤစနစ်အတွက် လင့်ခ် မရှိသေးပါ'
+      }
+    };
+
+    /* ══════════════════════════════════════════════════════════
+       3. ปฏิทินบริษัท 2026
+       ══════════════════════════════════════════════════════════ */
+    var cal = {
+      year: 2026,
+      scopes: {
+        office: {
+          public: ['2026-01-01', '2026-04-06', '2026-04-13', '2026-04-14', '2026-04-15', '2026-05-01', '2026-06-03', '2026-07-28', '2026-07-29', '2026-08-12', '2026-10-23', '2026-12-31'],
+          substitution: ['2026-06-01'],
+          vacation: ['2026-01-02'],
+          compensate: ['2026-01-03', '2026-01-10', '2026-02-14', '2026-02-28', '2026-03-07', '2026-03-21', '2026-04-04', '2026-04-18', '2026-05-02', '2026-05-16', '2026-05-30', '2026-06-13', '2026-06-27', '2026-07-11', '2026-07-25', '2026-08-08', '2026-08-22', '2026-09-05', '2026-09-19', '2026-10-03', '2026-10-17', '2026-10-24', '2026-11-14', '2026-11-28', '2026-12-12', '2026-12-26']
+        },
+        factory: {
+          public: ['2026-01-01', '2026-04-06', '2026-04-13', '2026-04-14', '2026-04-15', '2026-05-01', '2026-06-03', '2026-07-28', '2026-07-29', '2026-08-12', '2026-10-23', '2026-12-31'],
+          substitution: ['2026-06-01'],
+          vacation: ['2026-01-02', '2026-01-03'],
+          compensate: []
+        }
+      },
+      names: {
+        '2026-01-01': { th: 'วันขึ้นปีใหม่', en: "New Year's Day", my: 'နှစ်သစ်ကူးနေ့' },
+        '2026-01-02': { th: 'วันหยุดพักผ่อนประจำปี', en: 'Vacation', my: 'အားလပ်ရက်' },
+        '2026-01-03': { th: 'วันหยุดพักผ่อนประจำปี', en: 'Vacation', my: 'အားလပ်ရက်' },
+        '2026-04-06': { th: 'วันจักรี', en: 'Chakri Memorial Day', my: 'Chakri အောက်မေ့ဖွယ်နေ့' },
+        '2026-04-13': { th: 'วันสงกรานต์', en: 'Songkran', my: 'သင်္ကြန်နေ့' },
+        '2026-04-14': { th: 'วันสงกรานต์', en: 'Songkran', my: 'သင်္ကြန်နေ့' },
+        '2026-04-15': { th: 'วันสงกรานต์', en: 'Songkran', my: 'သင်္ကြန်နေ့' },
+        '2026-05-01': { th: 'วันแรงงานแห่งชาติ', en: 'National Labour Day', my: 'အလုပ်သမားနေ့' },
+        '2026-06-01': { th: 'ชดเชยวันวิสาขบูชา', en: 'Substitution for Visakha Bucha', my: 'Visakha Bucha အစားထိုး' },
+        '2026-06-03': { th: 'วันเฉลิมพระชนมพรรษา สมเด็จพระนางเจ้าฯ', en: "H.M. Queen Suthida's Birthday", my: 'HM Queen Suthida မွေးနေ့' },
+        '2026-07-28': { th: 'วันเฉลิมพระชนมพรรษา ในหลวง ร.10', en: "King Maha Vajiralongkorn's Birthday", my: 'ဘုရင် မွေးနေ့' },
+        '2026-07-29': { th: 'วันอาสาฬหบูชา', en: 'Asalha Bucha', my: 'Asalha Bucha နေ့' },
+        '2026-08-12': { th: 'วันแม่แห่งชาติ', en: "Mother's Day", my: 'အမေများနေ့' },
+        '2026-10-23': { th: 'วันปิยมหาราช', en: "King Chulalongkorn's Memorial Day", my: 'Chulalongkorn အောက်မေ့ဖွယ်နေ့' },
+        '2026-12-31': { th: 'วันสิ้นปี', en: "New Year's Eve", my: 'နှစ်ကုန်နေ့' }
+      }
+    };
+
+    /* รูปทรงสัญลักษณ์ ตรงตามไฟล์ Excel ต้นฉบับ */
+    var shapes = {
+      sunday: '<circle cx="12" cy="12" r="10"/>',
+      public: '<rect x="2.5" y="3" width="19" height="18" rx="1"/>',
+      substitution: '<polygon points="12,2 14.5,8.6 21.5,8.9 16,13.3 17.9,20.1 12,16.2 6.1,20.1 8,13.3 2.5,8.9 9.5,8.6"/>',
+      compensate: '<polygon points="12,2.6 22,21.4 2,21.4"/>',
+      vacation: '<polygon points="12,2.5 21.5,12 12,21.5 2.5,12"/>',
+      special: '<polygon points="7,3 17,3 22,12 17,21 7,21 2,12"/>'
+    };
+
+    var marks = (function () {
+      var out = {};
+      for (var scope in cal.scopes) {
+        out[scope] = {};
+        var groups = cal.scopes[scope];
+        for (var type in groups) {
+          for (var i = 0; i < groups[type].length; i++) {
+            out[scope][groups[type][i]] = type;
+          }
+        }
+      }
+      return out;
+    })();
+
+    /* ══════════════════════════════════════════════════════════
+       4. สถานะ + ตัวช่วย
+       ══════════════════════════════════════════════════════════ */
+    var LANG_KEY = 'simenu_language';
+    var langs = ['th', 'en', 'my'];
+    var locales = { th: 'th-TH', en: 'en-US', my: 'my-MM' };
+    var lang = 'th';
+    var newsCat = '';
+    var appCat = '';
+    var appQuery = '';
+    var calScope = 'office';
+    var calMonth = new Date().getMonth();
+    var modalScope = 'office';
+    var toastTimer = null;
+
+    var $ = function (sel, root) { return (root || document).querySelector(sel); };
+    var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+    var tr = function (key) { return (t[lang] && t[lang][key]) || t.th[key] || key; };
+    var esc = function (s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    };
+    var pad2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    var iso = function (y, m, d) { return y + '-' + pad2(m + 1) + '-' + pad2(d); };
+
+    function toast(msg) {
+      var el = $('#toast');
+      el.textContent = msg;
+      el.classList.add('on');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { el.classList.remove('on'); }, 2600);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       5. ภาษา
+       ══════════════════════════════════════════════════════════ */
+    function readLang() {
+      try {
+        var v = localStorage.getItem(LANG_KEY);
+        return langs.indexOf(v) > -1 ? v : 'th';
+      } catch (e) { return 'th'; }
+    }
+
+    function setLang(next, save) {
+      lang = langs.indexOf(next) > -1 ? next : 'th';
+      document.documentElement.lang = lang;
+
+      if (save !== false) {
+        try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+      }
+
+      $$('[data-i18n]').forEach(function (el) {
+        var key = el.getAttribute('data-i18n');
+        if (t[lang] && t[lang][key]) { el.textContent = t[lang][key]; }
+      });
+
+      $$('[data-i18n-placeholder]').forEach(function (el) {
+        var key = el.getAttribute('data-i18n-placeholder');
+        if (t[lang] && t[lang][key]) { el.placeholder = t[lang][key]; }
+      });
+
+      /* หัวข้อ/เนื้อหาประกาศ */
+      $$('[data-news]').forEach(function (el) {
+        var title = el.getAttribute('data-title-' + lang) || el.getAttribute('data-title-th');
+        var body = el.getAttribute('data-body-' + lang) || el.getAttribute('data-body-th');
+        var tEl = $('[data-title]', el);
+        var bEl = $('[data-body]', el);
+        if (tEl && title) { tEl.textContent = title; }
+        if (bEl) { bEl.textContent = body || ''; }
+      });
+
+      /* ชื่อหมวดประกาศ: ทั้งชิปและป้ายบนการ์ด */
+      $$('.chip[data-cat]').forEach(function (el) {
+        var name = el.getAttribute('data-name-' + lang);
+        var span = el.querySelector('span');
+        if (name && span) { span.textContent = name; }
+      });
+
+      $$('[data-cat-tag]').forEach(function (el) {
+        var id = el.getAttribute('data-cat-tag');
+        var chip = $('.chip[data-cat="' + id + '"]');
+        if (chip) {
+          var name = chip.getAttribute('data-name-' + lang);
+          if (name) { el.textContent = name; }
+        }
+      });
+
+      $('#langFlag').src = 'img/flags/' + lang + '.png';
+      $$('#langPanel .pop-item').forEach(function (b) {
+        b.setAttribute('aria-current', b.getAttribute('data-lang') === lang ? 'true' : 'false');
+      });
+
+      renderAppChips();
+      renderApps();
+      renderMiniCal();
+      updateClock();
+      updateNextHoliday();
+
+      if ($('#mCalendar').classList.contains('on')) { renderModalCal(); }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       6. นาฬิกา + วันที่
+       ══════════════════════════════════════════════════════════ */
+    function updateClock() {
+      var now = new Date();
+      var dateEl = $('#clockDate');
+      var timeEl = $('#clockTime');
+
+      if (dateEl) {
+        dateEl.textContent = now.toLocaleDateString(locales[lang], {
+          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+        });
+      }
+
+      if (timeEl) {
+        timeEl.textContent = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       7. ประกาศ — กรองตามหมวด
+       ══════════════════════════════════════════════════════════ */
+    function filterNews(catId) {
+      newsCat = catId;
+      var shown = 0;
+
+      /* เฉพาะรายการในคอลัมน์หลัก (แถบข้างไม่ต้องกรอง) */
+      $$('.news-feature[data-news], .news-row[data-news]').forEach(function (el) {
+        var match = catId === '' || el.getAttribute('data-cat') === catId;
+        el.style.display = match ? '' : 'none';
+        if (match) { shown++; }
+      });
+
+      $$('.chip[data-cat]').forEach(function (b) {
+        b.setAttribute('aria-selected', b.getAttribute('data-cat') === catId ? 'true' : 'false');
+      });
+
+      var none = $('#newsNone');
+      if (none) { none.hidden = shown > 0; }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       8. ระบบงาน
+       ══════════════════════════════════════════════════════════ */
+    function appCopy(id) {
+      var row = appText[id];
+      return (row && (row[lang] || row.en || row.th)) || ['', ''];
+    }
+
+    function appMatchesQuery(a) {
+      if (appQuery === '') { return true; }
+
+      var q = appQuery;
+      var row = appText[a.id] || {};
+      var keys = ['th', 'en', 'my'];
+
+      for (var i = 0; i < keys.length; i++) {
+        var pair = row[keys[i]];
+        if (!pair) { continue; }
+        if (String(pair[0]).toLowerCase().indexOf(q) > -1) { return true; }
+        if (String(pair[1]).toLowerCase().indexOf(q) > -1) { return true; }
+      }
+
+      return String(a.id).toLowerCase().indexOf(q) > -1;
+    }
+
+    function visibleApps() {
+      return apps.filter(function (a) {
+        return (appCat === '' || a.cat === appCat) && appMatchesQuery(a);
+      });
+    }
+
+    function renderAppChips() {
+      var box = $('#appChips');
+      if (!box) { return; }
+
+      box.innerHTML = appCats.map(function (c) {
+        var count = apps.filter(function (a) {
+          return (c.key === '' || a.cat === c.key) && appMatchesQuery(a);
+        }).length;
+
+        return '<button class="chip" role="tab" type="button" data-appcat="' + c.key + '" aria-selected="' +
+          (c.key === appCat ? 'true' : 'false') + '"><span>' + esc(c[lang] || c.en) + '</span><small>' + count + '</small></button>';
+      }).join('');
+    }
+
+    function renderApps() {
+      var grid = $('#appGrid');
+      if (!grid) { return; }
+
+      var list = visibleApps();
+
+      grid.innerHTML = list.map(function (a) {
+        var copy = appCopy(a.id);
+        var out = '<span class="app-out"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5h10v10M19 5 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+        var inner = '<span class="app-icon"><img src="' + a.img + '" alt="" loading="lazy" decoding="async"></span>' +
+          '<span class="app-text"><b>' + esc(copy[0]) + '</b><span>' + esc(copy[1]) + '</span></span>' + out;
+
+        if (a.url) {
+          return '<a class="app" href="launch.php?app=' + encodeURIComponent(a.id) + '&amp;lang=' + encodeURIComponent(lang) + '" data-app="' + a.id + '">' + inner + '</a>';
+        }
+        return '<button class="app off" type="button" data-app="' + a.id + '" aria-disabled="true">' + inner + '</button>';
+      }).join('');
+
+      $('#appNone').hidden = list.length > 0;
+
+      var count = $('#appsCount');
+      if (count) {
+        count.textContent = tr('appsShowing') + ' ' + list.length + ' ' + tr('appsOf') + ' ' + apps.length + ' ' + tr('appsUnit');
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       9. ปฏิทิน
+       ══════════════════════════════════════════════════════════ */
+    function dayType(scope, y, m, d) {
+      var key = iso(y, m, d);
+      var found = marks[scope] && marks[scope][key];
+      if (found) { return found; }
+      return new Date(y, m, d).getDay() === 0 ? 'sunday' : '';
+    }
+
+    function markSvg(type) {
+      if (!shapes[type]) { return ''; }
+      return '<svg class="mk m-' + type + '" viewBox="0 0 24 24" aria-hidden="true">' + shapes[type] + '</svg>';
+    }
+
+    function monthName(m, style) {
+      return new Date(cal.year, m, 1).toLocaleDateString(locales[lang], { month: style || 'long' });
+    }
+
+    function holidayName(key, type) {
+      var row = cal.names[key];
+      if (row) { return row[lang] || row.en; }
+      return tr(type === 'compensate' ? 'lgCompensate' : type === 'vacation' ? 'lgVacation' : 'lgPublic');
+    }
+
+    function typeLabel(type) {
+      var map = {
+        public: 'lgPublic', substitution: 'lgSubstitution',
+        compensate: 'lgCompensate', vacation: 'lgVacation', special: 'lgSpecial'
+      };
+      return map[type] ? tr(map[type]) : '';
+    }
+
+    /* วันหยุดในเดือน (ไม่รวมวันอาทิตย์ปกติ) */
+    function monthHolidays(scope, y, m) {
+      var out = [];
+      var prefix = y + '-' + pad2(m + 1) + '-';
+      var map = marks[scope] || {};
+
+      for (var key in map) {
+        if (key.indexOf(prefix) === 0) {
+          out.push({ key: key, type: map[key], day: parseInt(key.slice(8, 10), 10) });
+        }
+      }
+
+      out.sort(function (a, b) { return a.day - b.day; });
+      return out;
+    }
+
+    function buildGrid(scope, y, m) {
+      var first = new Date(y, m, 1).getDay();
+      var days = new Date(y, m + 1, 0).getDate();
+      var prevDays = new Date(y, m, 0).getDate();
+      var today = new Date();
+      var dow = [];
+      var i;
+
+      for (i = 0; i < 7; i++) {
+        dow.push('<div class="cal-dow">' + new Date(2026, 1, 1 + i).toLocaleDateString(locales[lang], { weekday: 'narrow' }) + '</div>');
+      }
+
+      var cells = [];
+
+      for (i = first - 1; i >= 0; i--) {
+        cells.push('<div class="cal-day out">' + (prevDays - i) + '</div>');
+      }
+
+      for (i = 1; i <= days; i++) {
+        var type = dayType(scope, y, m, i);
+        var isToday = today.getFullYear() === y && today.getMonth() === m && today.getDate() === i;
+        var cls = 'cal-day' + (type ? ' is-' + type : '') + (isToday ? ' today' : '');
+        cells.push('<div class="' + cls + '">' + markSvg(type) + '<span>' + i + '</span></div>');
+      }
+
+      var tail = (7 - (cells.length % 7)) % 7;
+      for (i = 1; i <= tail; i++) {
+        cells.push('<div class="cal-day out">' + i + '</div>');
+      }
+
+      return dow.join('') + cells.join('');
+    }
+
+    /* ── ปฏิทินย่อในหน้า + รายการวันหยุดของเดือนนั้น ── */
+    function renderMiniCal() {
+      var grid = $('#miniCal');
+      if (!grid) { return; }
+
+      grid.innerHTML = buildGrid(calScope, cal.year, calMonth);
+
+      var label = $('#monthLabel');
+      if (label) { label.textContent = monthName(calMonth) + ' ' + cal.year; }
+
+      var scopeEl = $('#holidayScope');
+      if (scopeEl) { scopeEl.textContent = tr(calScope === 'office' ? 'scopeOffice' : 'scopeFactory'); }
+
+      var list = $('#holidayList');
+      if (!list) { return; }
+
+      var rows = monthHolidays(calScope, cal.year, calMonth);
+
+      if (rows.length === 0) {
+        list.innerHTML = '<div style="padding:26px 0;text-align:center;color:var(--faint);font-size:0.8125rem">' + esc(tr('noHoliday')) + '</div>';
+        return;
+      }
+
+      list.innerHTML = rows.map(function (r) {
+        var d = new Date(cal.year, calMonth, r.day);
+        var dowText = d.toLocaleDateString(locales[lang], { weekday: 'short' });
+        return '<div class="holiday">' +
+          '<span class="holiday-date"><strong>' + r.day + '</strong><em>' + esc(dowText) + '</em></span>' +
+          '<span class="holiday-name"><b>' + esc(holidayName(r.key, r.type)) + '</b><span>' + esc(typeLabel(r.type)) + '</span></span>' +
+          markSvg(r.type) +
+          '</div>';
+      }).join('');
+    }
+
+    /* ── วันหยุดถัดไป (แถบตัวเลขสรุป) ── */
+    function updateNextHoliday() {
+      var el = $('#kpiHoliday');
+      if (!el) { return; }
+
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      var map = marks[calScope] || {};
+      var best = null;
+
+      for (var key in map) {
+        var parts = key.split('-');
+        var when = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        if (when >= today && (best === null || when < best.when)) {
+          best = { when: when, key: key, type: map[key] };
+        }
+      }
+
+      if (!best) {
+        el.textContent = '—';
+        el.title = '';
+        return;
+      }
+
+      el.textContent = best.when.toLocaleDateString(locales[lang], { day: 'numeric', month: 'short' });
+      el.title = holidayName(best.key, best.type);
+    }
+
+    /* ── ปฏิทินเต็มปีในโมดัล ── */
+    function renderModalCal() {
+      var yearGrid = $('#yearGrid');
+      if (!yearGrid) { return; }
+
+      $('#mCalTitle').textContent = tr('calTitle') + ' ' + cal.year;
+      yearGrid.innerHTML = '';
+
+      for (var m = 0; m < 12; m++) {
+        var card = document.createElement('div');
+        card.className = 'month-card';
+        card.innerHTML = '<b>' + esc(monthName(m, 'short')) + '</b><div class="cal-grid">' +
+          buildGrid(modalScope, cal.year, m) + '</div>';
+        yearGrid.appendChild(card);
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       10. สไลด์ภาพหัวหน้า
+       ══════════════════════════════════════════════════════════ */
+    var slideAt = 0;
+    var slideTimer = null;
+
+    function showSlide(index) {
+      if (slideCount < 2) { return; }
+
+      slideAt = (index + slideCount) % slideCount;
+
+      $$('.hero-slide').forEach(function (s) {
+        s.classList.toggle('is-on', parseInt(s.getAttribute('data-slide'), 10) === slideAt);
+      });
+
+      $$('#heroDots button').forEach(function (b) {
+        b.setAttribute('aria-current', parseInt(b.getAttribute('data-dot'), 10) === slideAt ? 'true' : 'false');
+      });
+    }
+
+    function startSlides() {
+      if (slideCount < 2) { return; }
+      clearInterval(slideTimer);
+      slideTimer = setInterval(function () { showSlide(slideAt + 1); }, 7000);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       11. โมดัล
+       ══════════════════════════════════════════════════════════ */
+    var lastFocus = null;
+
+    function openModal(id) {
+      lastFocus = document.activeElement;
+      $('#' + id).classList.add('on');
+      document.body.style.overflow = 'hidden';
+
+      if (id === 'mCalendar') {
+        modalScope = calScope;
+        $$('[data-mscope]').forEach(function (b) {
+          b.setAttribute('aria-selected', b.getAttribute('data-mscope') === modalScope ? 'true' : 'false');
+        });
+        renderModalCal();
+      }
+
+      var close = $('#' + id + ' [data-close]');
+      if (close) { close.focus(); }
+    }
+
+    function closeModal() {
+      $$('.modal.on').forEach(function (m) { m.classList.remove('on'); });
+      document.body.style.overflow = '';
+      if (lastFocus) { lastFocus.focus(); }
+    }
+
+    function closePops() {
+      $$('.pop-panel').forEach(function (p) { p.classList.remove('on'); });
+      var ob = $('#orgBtn');
+      var lb = $('#langBtn');
+      if (ob) { ob.setAttribute('aria-expanded', 'false'); }
+      if (lb) { lb.setAttribute('aria-expanded', 'false'); }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       12. เชื่อมเหตุการณ์
+       ══════════════════════════════════════════════════════════ */
+    document.addEventListener('click', function (e) {
+      var el;
+
+      /* หมวดประกาศ */
+      el = e.target.closest('.chip[data-cat]');
+      if (el) { filterNews(el.getAttribute('data-cat')); return; }
+
+      /* หมวดระบบงาน */
+      el = e.target.closest('.chip[data-appcat]');
+      if (el) {
+        appCat = el.getAttribute('data-appcat');
+        renderAppChips();
+        renderApps();
+        return;
+      }
+
+      /* การ์ดแอปที่ยังไม่มีลิงก์ */
+      el = e.target.closest('.app.off');
+      if (el) { toast(tr('noLink')); return; }
+
+      /* สไลด์ภาพ */
+      el = e.target.closest('[data-hero]');
+      if (el) {
+        showSlide(slideAt + (el.getAttribute('data-hero') === 'next' ? 1 : -1));
+        startSlides();
+        return;
+      }
+
+      el = e.target.closest('[data-dot]');
+      if (el) {
+        showSlide(parseInt(el.getAttribute('data-dot'), 10));
+        startSlides();
+        return;
+      }
+
+      /* ปฏิทินในหน้า: สลับสำนักงาน/โรงงาน */
+      el = e.target.closest('[data-scope]');
+      if (el) {
+        calScope = el.getAttribute('data-scope');
+        $$('[data-scope]').forEach(function (b) {
+          b.setAttribute('aria-selected', b.getAttribute('data-scope') === calScope ? 'true' : 'false');
+        });
+        renderMiniCal();
+        updateNextHoliday();
+        return;
+      }
+
+      /* ปฏิทินในหน้า: เลื่อนเดือน */
+      el = e.target.closest('[data-shift]');
+      if (el) {
+        calMonth = (calMonth + parseInt(el.getAttribute('data-shift'), 10) + 12) % 12;
+        renderMiniCal();
+        return;
+      }
+
+      /* เปิดโมดัล */
+      el = e.target.closest('[data-open]');
+      if (el) {
+        closePops();
+        openModal(el.getAttribute('data-open') === 'calendar' ? 'mCalendar' : 'mMap');
+        return;
+      }
+
+      /* ปิดโมดัล */
+      if (e.target.closest('[data-close]')) { closeModal(); return; }
+
+      /* โมดัลปฏิทิน: สลับ scope */
+      el = e.target.closest('[data-mscope]');
+      if (el) {
+        modalScope = el.getAttribute('data-mscope');
+        $$('[data-mscope]').forEach(function (b) {
+          b.setAttribute('aria-selected', b.getAttribute('data-mscope') === modalScope ? 'true' : 'false');
+        });
+        renderModalCal();
+        return;
+      }
+
+      /* เมนูข้อมูลองค์กร */
+      if (e.target.closest('#orgBtn')) {
+        var op = $('#orgPanel');
+        var open = !op.classList.contains('on');
+        closePops();
+        op.classList.toggle('on', open);
+        $('#orgBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+        return;
+      }
+
+      /* เมนูภาษา */
+      if (e.target.closest('#langBtn')) {
+        var lp = $('#langPanel');
+        var lopen = !lp.classList.contains('on');
+        closePops();
+        lp.classList.toggle('on', lopen);
+        $('#langBtn').setAttribute('aria-expanded', lopen ? 'true' : 'false');
+        return;
+      }
+
+      el = e.target.closest('[data-lang]');
+      if (el) {
+        setLang(el.getAttribute('data-lang'));
+        closePops();
+        return;
+      }
+
+      /* ล้างคำค้น */
+      if (e.target.closest('#searchClear')) {
+        var input = $('#appSearch');
+        input.value = '';
+        appQuery = '';
+        $('#searchBox').classList.remove('has-text');
+        renderAppChips();
+        renderApps();
+        input.focus();
+        return;
+      }
+
+      /* รายการที่ยังไม่มีหน้าจริง */
+      if (e.target.closest('[data-soon]')) {
+        toast(tr('soon'));
+        closePops();
+        return;
+      }
+
+      /* คลิกนอกเมนู */
+      if (!e.target.closest('.pop')) { closePops(); }
+    });
+
+    /* ── ค้นหาระบบงาน ── */
+    (function () {
+      var input = $('#appSearch');
+      var box = $('#searchBox');
+      if (!input) { return; }
+
+      input.addEventListener('input', function () {
+        appQuery = input.value.trim().toLowerCase();
+        box.classList.toggle('has-text', appQuery !== '');
+        renderAppChips();
+        renderApps();
+      });
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var target = document.getElementById('apps');
+          if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        }
+      });
+    })();
+
+    /* ── แป้นลูกศรบนแท็บ + ปิดด้วย Escape ── */
+    document.addEventListener('keydown', function (e) {
+      var tab = e.target.closest && e.target.closest('[role="tab"]');
+      if (tab && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End')) {
+        var tablist = tab.closest('[role="tablist"]');
+        var items = tablist ? $$('[role="tab"]', tablist) : [];
+        var index = items.indexOf(tab);
+        var nextIndex = index;
+
+        if (e.key === 'ArrowLeft') { nextIndex = (index - 1 + items.length) % items.length; }
+        if (e.key === 'ArrowRight') { nextIndex = (index + 1) % items.length; }
+        if (e.key === 'Home') { nextIndex = 0; }
+        if (e.key === 'End') { nextIndex = items.length - 1; }
+
+        if (items[nextIndex]) {
+          e.preventDefault();
+          items[nextIndex].focus();
+          items[nextIndex].click();
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        closeModal();
+        closePops();
+      }
+    });
+
+    /* ── เมนูหลัก: ไฮไลต์ส่วนที่กำลังอ่าน ── */
+    (function () {
+      var sections = ['news', 'apps', 'calendar', 'org', 'contact'];
+      var links = {};
+
+      $$('[data-nav]').forEach(function (a) { links[a.getAttribute('data-nav')] = a; });
+
+      if (!window.IntersectionObserver) { return; }
+
+      var seen = {};
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) { seen[entry.target.id] = entry.isIntersecting; });
+
+        for (var i = 0; i < sections.length; i++) {
+          if (seen[sections[i]]) {
+            $$('[data-nav]').forEach(function (a) { a.classList.remove('is-active'); });
+            if (links[sections[i]]) { links[sections[i]].classList.add('is-active'); }
+            break;
+          }
+        }
+      }, { rootMargin: '-45% 0px -50% 0px' });
+
+      sections.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) { observer.observe(el); }
+      });
+    })();
+
+    /* ══════════════════════════════════════════════════════════
+       13. เริ่มทำงาน
+       ══════════════════════════════════════════════════════════ */
+    setLang(readLang(), false);
+    startSlides();
+    setInterval(updateClock, 1000);
+
+    var footYear = $('#footYear');
+    if (footYear) { footYear.textContent = new Date().getFullYear(); }
+
+    (function startSiIntro() {
+      var intro = $('#siIntro');
+      var word = $('#siIntroWord');
+      var target = $('#siIntroTarget');
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function removeIntro() {
+        if (intro && intro.parentNode) { intro.parentNode.removeChild(intro); }
+      }
+
+      if (!intro || !word || !target || reduceMotion) {
+        removeIntro();
+        return;
+      }
+
+      window.requestAnimationFrame(function () {
+        var wordRect = word.getBoundingClientRect();
+        var targetRect = target.getBoundingClientRect();
+        var viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        var focusX = targetRect.left + (targetRect.width * 0.12);
+        var focusY = targetRect.top + (targetRect.height * 0.56);
+        var strokeWidth = Math.max(targetRect.width * 0.14, 1);
+        var zoom = Math.min(180, Math.max(56, (Math.max(viewportWidth, viewportHeight) / strokeWidth) * 1.08));
+
+        word.style.setProperty('--si-origin-x', (focusX - wordRect.left) + 'px');
+        word.style.setProperty('--si-origin-y', (focusY - wordRect.top) + 'px');
+        word.style.setProperty('--si-shift-x', ((viewportWidth / 2) - focusX) + 'px');
+        word.style.setProperty('--si-shift-y', ((viewportHeight / 2) - focusY) + 'px');
+        word.style.setProperty('--si-zoom', zoom);
+        word.classList.add('is-running');
+      });
+
+      window.setTimeout(removeIntro, 2240);
+    })();
+  </script>
+</body>
+
+</html>
